@@ -19,20 +19,31 @@ struct ARViewContainer: UIViewRepresentable {
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: true)
-
-        // Load the model
-        let anchor = AnchorEntity()
-        do {
-            let biplane = try ModelEntity.loadModel(named: "toy_biplane_idle.usdz")
-            anchor.addChild(biplane)
-        } catch {
-            print("Error loading model: \(error)")
-        }
-        arView.scene.addAnchor(anchor)
+        loadBiplaneModel(into: arView)
         return arView
     }
     
     func updateUIView(_ uiView: ARView, context: Context) {}
+
+    private func loadBiplaneModel(into arView: ARView) {
+        let anchor = AnchorEntity()
+        
+        if let biplane = try? ModelEntity.loadModel(named: "toy_biplane_idle.usdz") {
+            anchor.addChild(biplane)
+            playAnimations(for: biplane)
+        } else {
+            print("Error loading the biplane model")
+        }
+        
+        arView.scene.addAnchor(anchor)
+    }
+
+    private func playAnimations(for entity: ModelEntity) {
+        let animationTransitionDuration: TimeInterval = 1.25
+        for animation in entity.availableAnimations {
+            entity.playAnimation(animation.repeat(duration: .infinity), transitionDuration: animationTransitionDuration, startsPaused: false)
+        }
+    }
 }
 
 #Preview {

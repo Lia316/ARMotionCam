@@ -17,6 +17,7 @@ let package = Package(
             name: "ARMotionCam",
             targets: ["AppModule"],
             bundleIdentifier: "com.Lia316.ARMotionCam",
+            teamIdentifier: "T79FMP6Q2L",
             displayVersion: "1.0",
             bundleVersion: "1",
             appIcon: .placeholder(icon: .camera),
@@ -28,13 +29,20 @@ let package = Package(
                 .landscapeRight,
                 .landscapeLeft
             ],
+            capabilities: [
+                .fileAccess(.userSelectedFiles, mode: .readOnly),
+                .camera(purposeString: "This app uses the camera to overlay virtual objects in the real world.")
+            ],
             appCategory: .photography
         )
     ],
     targets: [
         .executableTarget(
             name: "AppModule",
-            path: "."
+            path: ".",
+            resources: [
+                .process("Resources")
+            ]
         )
     ]
 )

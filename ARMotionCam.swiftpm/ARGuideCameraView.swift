@@ -5,6 +5,7 @@
 //  Created by 리아 on 3/19/24.
 //
 
+import UIKit
 import SwiftUI
 import RealityKit
 import ARKit
@@ -26,6 +27,8 @@ struct ARViewContainer: UIViewRepresentable {
         coordinator.startTracking(in: arView)
         
         loadBiplaneModel(into: arView)
+        animateBiplaneMovement(in: arView)
+        
         return arView
     }
     
@@ -48,6 +51,30 @@ struct ARViewContainer: UIViewRepresentable {
         let animationTransitionDuration: TimeInterval = 1.25
         for animation in entity.availableAnimations {
             entity.playAnimation(animation.repeat(duration: .infinity), transitionDuration: animationTransitionDuration, startsPaused: false)
+        }
+    }
+    
+    private func animateBiplaneMovement(in arView: ARView) {
+        guard let biplane = (arView.scene.anchors.first as? AnchorEntity)?.children.first as? ModelEntity else { return }
+        
+        let radius: Float = 1.0 // unit: meter
+        let speed: Float = 0.01
+        
+        var angle: Float = 0.0
+        Timer.scheduledTimer(withTimeInterval: 0.01, repeats: true) { timer in
+            angle += speed
+            let x = radius * sin(angle)
+            let z = radius * cos(angle)
+            let halfAngle = radius * Float.pi * 0.5
+            
+            biplane.transform.translation = [x, 0, z]
+            biplane.transform.rotation = simd_quatf(angle: angle + halfAngle, axis: [0, 1, 0])
+            
+            // Stop the animation after completing n full circle
+            let n: Float = 5.0
+            if angle >= n * 2 * Float.pi * radius {
+                timer.invalidate()
+            }
         }
     }
     

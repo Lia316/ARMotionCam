@@ -97,10 +97,11 @@ struct ARViewContainer: UIViewRepresentable {
             }
 
             private func updateTrackingData(arView: ARView) {
-                if let anchor = arView.scene.anchors.first as? AnchorEntity {
-                    let newPosition = anchor.position
-                    let newOrientation = anchor.orientation
-                    
+                if let biplane = (arView.scene.anchors.first as? AnchorEntity)?.children.first as? ModelEntity {
+                    // Relative to world coordinates
+                    let newPosition = biplane.position(relativeTo: nil)
+                    let newOrientation = biplane.orientation(relativeTo: nil)
+
                     // Update the tracking data
                     trackingData.wrappedValue.position = newPosition
                     trackingData.wrappedValue.orientation = newOrientation

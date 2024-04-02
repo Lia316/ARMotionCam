@@ -5,7 +5,6 @@
 //  Created by 리아 on 3/19/24.
 //
 
-import UIKit
 import SwiftUI
 import RealityKit
 import ARKit
@@ -83,39 +82,39 @@ struct ARViewContainer: UIViewRepresentable {
     }
     
     class Coordinator: NSObject, ARSessionDelegate {
-            var trackingData: Binding<PositionAndOrientation>
-            var timer: Timer?
-
-            init(_ trackingData: Binding<PositionAndOrientation>) {
-                self.trackingData = trackingData
-            }
-
-            func startTracking(in arView: ARView) {
-                timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
-                    self?.updateTrackingData(arView: arView)
-                }
-            }
-
-            private func updateTrackingData(arView: ARView) {
-                if let biplane = (arView.scene.anchors.first as? AnchorEntity)?.children.first as? ModelEntity {
-                    // Relative to world coordinates
-                    let newPosition = biplane.position(relativeTo: nil)
-                    let newOrientation = biplane.orientation(relativeTo: nil)
-
-                    // Update the tracking data
-                    trackingData.wrappedValue.position = newPosition
-                    trackingData.wrappedValue.orientation = newOrientation
-
-                    // Print the updated data to the console
-                    print("Position: \(newPosition)")
-                    print("Orientation: \(newOrientation)")
-                }
-            }
-
-            deinit {
-                timer?.invalidate()
+        var trackingData: Binding<PositionAndOrientation>
+        var timer: Timer?
+        
+        init(_ trackingData: Binding<PositionAndOrientation>) {
+            self.trackingData = trackingData
+        }
+        
+        func startTracking(in arView: ARView) {
+            timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+                self?.updateTrackingData(arView: arView)
             }
         }
+        
+        private func updateTrackingData(arView: ARView) {
+            if let biplane = (arView.scene.anchors.first as? AnchorEntity)?.children.first as? ModelEntity {
+                // Relative to world coordinates
+                let newPosition = biplane.position(relativeTo: nil)
+                let newOrientation = biplane.orientation(relativeTo: nil)
+                
+                // Update the tracking data
+                trackingData.wrappedValue.position = newPosition
+                trackingData.wrappedValue.orientation = newOrientation
+                
+                // Print the updated data to the console
+                print("Position: \(newPosition)")
+                print("Orientation: \(newOrientation)")
+            }
+        }
+        
+        deinit {
+            timer?.invalidate()
+        }
+    }
 }
 
 #Preview {

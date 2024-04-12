@@ -17,6 +17,7 @@ struct ARGuideCameraView: View {
 
 struct ARViewContainer: UIViewRepresentable {
     @State private var trackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())
+    @State private var cameraTrackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: true)
@@ -78,15 +79,17 @@ struct ARViewContainer: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator($trackingData)
+        Coordinator($trackingData, $cameraTrackingData)
     }
     
     class Coordinator: NSObject, ARSessionDelegate {
         var trackingData: Binding<PositionAndOrientation>
+        var cameraTrackingData: Binding<PositionAndOrientation>
         var timer: Timer?
         
-        init(_ trackingData: Binding<PositionAndOrientation>) {
+        init(_ trackingData: Binding<PositionAndOrientation>, _ cameraTrackingData: Binding<PositionAndOrientation>) {
             self.trackingData = trackingData
+            self.cameraTrackingData = cameraTrackingData
         }
         
         func startTracking(in arView: ARView) {
@@ -96,6 +99,7 @@ struct ARViewContainer: UIViewRepresentable {
         }
         
         private func updateTrackingData(arView: ARView) {
+            // Track biplane model's position and orientation
             if let biplane = (arView.scene.anchors.first as? AnchorEntity)?.children.first as? ModelEntity {
                 // Relative to world coordinates
                 let newPosition = biplane.position(relativeTo: nil)
@@ -104,10 +108,20 @@ struct ARViewContainer: UIViewRepresentable {
                 // Update the tracking data
                 trackingData.wrappedValue.position = newPosition
                 trackingData.wrappedValue.orientation = newOrientation
-                
-                // Print the updated data to the console
-                print("Position: \(newPosition)")
-                print("Orientation: \(newOrientation)")
+
+                print("Biplane Position: \(newPosition)")
+                print("Biplane Orientation: \(newOrientation)")
+            }
+
+            if let cameraTransform = arView.session.currentFrame?.camera.transform {
+                let cameraPosition = SIMD3<Float>(cameraTransform.columns.3.x, cameraTransform.columns.3.y, cameraTransform.columns.3.z)
+                let cameraOrientation = simd_quatf(cameraTransform)
+
+                cameraTrackingData.wrappedValue.position = cameraPosition
+                cameraTrackingData.wrappedValue.orientation = cameraOrientation
+
+                print("Camera Position: \(cameraPosition)")
+                print("Camera Orientation: \(cameraOrientation)")
             }
         }
         

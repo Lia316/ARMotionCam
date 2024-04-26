@@ -12,22 +12,29 @@ import CoreData
 
 struct ARGuideCameraView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(
+        entity: TrackingData.entity(),
+        sortDescriptors: [
+            NSSortDescriptor(keyPath: \TrackingData.timestamp, ascending: true)
+        ],
+        animation: .default)
+    private var trackedData: FetchedResults<TrackingData>
+    
     var body: some View {
-        ARViewContainer()
-            .environment(\.managedObjectContext, viewContext)
-            .edgesIgnoringSafeArea(.all)
+        ZStack {
+            ARViewContainer()
+                .environment(\.managedObjectContext, viewContext)
+                .edgesIgnoringSafeArea(.all)
+            VStack {
+                Text("\(trackedData.suffix(2).first)")
+                Text("\(trackedData.suffix(2).last)")
+            }
+        }
     }
 }
 
 struct ARViewContainer: UIViewRepresentable {
     @Environment(\.managedObjectContext) private var viewContext
-//    @FetchRequest(
-//        entity: TrackingData.entity(),
-//        sortDescriptors: [
-//            NSSortDescriptor(keyPath: \TrackingData.timestamp, ascending: true)
-//        ],
-//        animation: .default)
-//    private var trackedData: FetchedResults<TrackingData>
     
     @State private var trackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())
     @State private var cameraTrackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())

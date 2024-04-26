@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.managedObjectContext) private var viewContext    
     @State private var path: [ViewType] = []
     
     var body: some View {
@@ -13,7 +14,7 @@ struct ContentView: View {
             }
             .navigationDestination(for: ViewType.self) { viewType in
                 switch viewType {
-                case .guide: ARGuideCameraView()
+                case .guide: ARGuideCameraView().environment(\.managedObjectContext, viewContext)
                 case .practice: ARPracticeCameraView()
                 }
             }

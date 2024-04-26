@@ -8,14 +8,27 @@
 import SwiftUI
 import RealityKit
 import ARKit
+import CoreData
 
 struct ARGuideCameraView: View {
+    @Environment(\.managedObjectContext) private var viewContext
     var body: some View {
-        ARViewContainer().edgesIgnoringSafeArea(.all)
+        ARViewContainer()
+            .environment(\.managedObjectContext, viewContext)
+            .edgesIgnoringSafeArea(.all)
     }
 }
 
 struct ARViewContainer: UIViewRepresentable {
+    @Environment(\.managedObjectContext) private var viewContext
+//    @FetchRequest(
+//        entity: TrackingData.entity(),
+//        sortDescriptors: [
+//            NSSortDescriptor(keyPath: \TrackingData.timestamp, ascending: true)
+//        ],
+//        animation: .default)
+//    private var trackedData: FetchedResults<TrackingData>
+    
     @State private var trackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())
     @State private var cameraTrackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())
     
@@ -79,15 +92,17 @@ struct ARViewContainer: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator($trackingData, $cameraTrackingData)
+        Coordinator(viewContext, $trackingData, $cameraTrackingData)
     }
     
     class Coordinator: NSObject, ARSessionDelegate {
+        private var viewContext: NSManagedObjectContext
         var trackingData: Binding<PositionAndOrientation>
         var cameraTrackingData: Binding<PositionAndOrientation>
         var timer: Timer?
         
-        init(_ trackingData: Binding<PositionAndOrientation>, _ cameraTrackingData: Binding<PositionAndOrientation>) {
+        init(_ viewContext: NSManagedObjectContext, _ trackingData: Binding<PositionAndOrientation>, _ cameraTrackingData: Binding<PositionAndOrientation>) {
+            self.viewContext = viewContext
             self.trackingData = trackingData
             self.cameraTrackingData = cameraTrackingData
         }
@@ -111,6 +126,7 @@ struct ARViewContainer: UIViewRepresentable {
 
                 print("Biplane Position: \(newPosition)")
                 print("Biplane Orientation: \(newOrientation)")
+                self.saveTrackingData(type: "Biplane", position: newPosition, orientation: newOrientation)
             }
 
             if let cameraTransform = arView.session.currentFrame?.camera.transform {
@@ -122,6 +138,27 @@ struct ARViewContainer: UIViewRepresentable {
 
                 print("Camera Position: \(cameraPosition)")
                 print("Camera Orientation: \(cameraOrientation)")
+                self.saveTrackingData(type: "Camera", position: cameraPosition, orientation: cameraOrientation)
+            }
+        }
+        
+        private func saveTrackingData(type: String, position: SIMD3<Float>, orientation: simd_quatf) {
+            let trackingData = TrackingData(context: viewContext)
+            trackingData.type = type
+            trackingData.timestamp = Date()
+            trackingData.positionX = position.x
+            trackingData.positionY = position.y
+            trackingData.positionZ = position.z
+            trackingData.orientationX = orientation.vector.x
+            trackingData.orientationY = orientation.vector.y
+            trackingData.orientationZ = orientation.vector.z
+            trackingData.orientationW = orientation.vector.w
+
+            do {
+                try viewContext.save()
+                print("Saved \(type)_\(trackingData.timestamp)  successfully")
+            } catch {
+                print("Failed to save \(type)_\(trackingData.timestamp): \(error.localizedDescription)")
             }
         }
         

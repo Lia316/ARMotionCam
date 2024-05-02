@@ -6,7 +6,6 @@
 //
 
 import CoreData
-import SwiftUI
 
 @objc(TrackingData)
 class TrackingData: NSManagedObject {

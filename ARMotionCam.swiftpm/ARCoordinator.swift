@@ -8,12 +8,9 @@
 import ARKit
 import CoreData
 import RealityKit
-import SwiftUI
 
 class Coordinator: NSObject, ARSessionDelegate {
     private var viewContext: NSManagedObjectContext
-    @State private var trackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())
-    @State private var cameraTrackingData = PositionAndOrientation(position: .zero, orientation: simd_quatf())
     var timer: Timer?
     
     init(_ viewContext: NSManagedObjectContext) {
@@ -27,30 +24,19 @@ class Coordinator: NSObject, ARSessionDelegate {
     }
     
     private func updateTrackingData(arView: ARView) {
-        // Track biplane model's position and orientation
-        if let biplane = (arView.scene.anchors.first as? AnchorEntity)?.children.first as? ModelEntity {
-            // Relative to world coordinates
-            let newPosition = biplane.position(relativeTo: nil)
-            let newOrientation = biplane.orientation(relativeTo: nil)
+        // Track target's position and orientation relative to world coordinates
+        if let targetEntity = (arView.scene.anchors.first as? AnchorEntity)?
+            .children.first as? ModelEntity {
+            let targetPosition = targetEntity.position(relativeTo: nil)
+            let targetOrientation = targetEntity.orientation(relativeTo: nil)
             
-            // Update the tracking data
-            $trackingData.wrappedValue.position = newPosition
-            $trackingData.wrappedValue.orientation = newOrientation
-
-            print("Biplane Position: \(newPosition)")
-            print("Biplane Orientation: \(newOrientation)")
-            self.saveTrackingData(type: "Biplane", position: newPosition, orientation: newOrientation)
+            self.saveTrackingData(type: "Target", position: targetPosition, orientation: targetOrientation)
         }
 
         if let cameraTransform = arView.session.currentFrame?.camera.transform {
             let cameraPosition = SIMD3<Float>(cameraTransform.columns.3.x, cameraTransform.columns.3.y, cameraTransform.columns.3.z)
             let cameraOrientation = simd_quatf(cameraTransform)
 
-            $cameraTrackingData.wrappedValue.position = cameraPosition
-            $cameraTrackingData.wrappedValue.orientation = cameraOrientation
-
-            print("Camera Position: \(cameraPosition)")
-            print("Camera Orientation: \(cameraOrientation)")
             self.saveTrackingData(type: "Camera", position: cameraPosition, orientation: cameraOrientation)
         }
     }
@@ -69,7 +55,8 @@ class Coordinator: NSObject, ARSessionDelegate {
 
         do {
             try viewContext.save()
-            print("Saved \(type)_\(trackingData.timestamp)  successfully")
+            print("Saved \(type)_\(trackingData.timestamp) successfully")
+            print("Position: \(position), Orientation: \(orientation)")
         } catch {
             print("Failed to save \(type)_\(trackingData.timestamp): \(error.localizedDescription)")
         }
@@ -78,9 +65,4 @@ class Coordinator: NSObject, ARSessionDelegate {
     deinit {
         timer?.invalidate()
     }
-}
-
-struct PositionAndOrientation {
-    var position: SIMD3<Float> // x, y, z coordinates
-    var orientation: simd_quatf // Quaternion representing the orientation
 }

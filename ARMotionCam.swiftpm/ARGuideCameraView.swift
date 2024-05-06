@@ -19,6 +19,7 @@ struct ARGuideCameraView: View {
         ],
         animation: .default)
     private var trackedData: FetchedResults<TrackingData>
+    private let recorder = ScreenRecorder()
     
     var body: some View {
         ZStack {
@@ -28,9 +29,25 @@ struct ARGuideCameraView: View {
             VStack {
                 Text("\(trackedData.suffix(2).first)")
                 Text("\(trackedData.suffix(2).last)")
+                Button {
+                    recorder.startScreenRecording()
+                } label: {
+                    Text("start recording")
+                }
+                Button {
+                    recorder.stopScreenRecording()
+                } label: {
+                    Text("stop recording")
+                }
+                Button {
+                    recorder.exportClip()
+                } label: {
+                    Text("export")
+                }
             }
         }
     }
+    
 }
 
 struct ARViewContainer: UIViewRepresentable {

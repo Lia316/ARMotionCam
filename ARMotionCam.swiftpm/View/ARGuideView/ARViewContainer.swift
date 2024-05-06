@@ -1,38 +1,13 @@
 //
-//  ARGuideCameraView.swift
-//  ARMotionCam
+//  ARViewContainer.swift
+//  
 //
-//  Created by 리아 on 3/19/24.
+//  Created by 리아 on 5/7/24.
 //
 
 import ARKit
-import CoreData
 import RealityKit
 import SwiftUI
-
-struct ARGuideCameraView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-    @FetchRequest(
-        entity: TrackingData.entity(),
-        sortDescriptors: [
-            NSSortDescriptor(keyPath: \TrackingData.timestamp, ascending: true)
-        ],
-        animation: .default)
-    private var trackedData: FetchedResults<TrackingData>
-    
-    var body: some View {
-        ZStack {
-            ARViewContainer()
-                .environment(\.managedObjectContext, viewContext)
-                .edgesIgnoringSafeArea(.all)
-            VStack {
-                Text("\(trackedData.suffix(2).first)")
-                Text("\(trackedData.suffix(2).last)")
-                RecorderView()
-            }
-        }
-    }
-}
 
 struct ARViewContainer: UIViewRepresentable {
     @Environment(\.managedObjectContext) private var viewContext
@@ -68,7 +43,7 @@ struct ARViewContainer: UIViewRepresentable {
     private func playAnimations(for entity: ModelEntity) {
         let animationTransitionDuration: TimeInterval = 1.25
         for animation in entity.availableAnimations {
-            entity.playAnimation(animation.repeat(duration: .infinity), 
+            entity.playAnimation(animation.repeat(duration: .infinity),
                                  transitionDuration: animationTransitionDuration,
                                  startsPaused: false)
         }
@@ -101,8 +76,4 @@ struct ARViewContainer: UIViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(viewContext)
     }
-}
-
-#Preview {
-    ARGuideCameraView()
 }

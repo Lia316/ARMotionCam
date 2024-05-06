@@ -16,64 +16,88 @@
 import ReplayKit
 import Photos
 
+enum RecordingError: Error, LocalizedError {
+    case duplicatedRecording
+    case stopWithoutRecording
+    case exportWithoutBuffer
+    case recordFail(Error?)
+    case stopFail(Error?)
+    case exportFail(Error?)
+    case saveFail(Error?)
+
+    public var errorDescription: String {
+        switch self {
+        case .duplicatedRecording:
+            return "Attempting To start recording while recording is in progress"
+        case .stopWithoutRecording:
+            return "Attempting the stop recording without an on going recording session"
+        case .exportWithoutBuffer:
+            return "Attemping to export clip while rolling clip buffer is turned off"
+        case .recordFail(let error):
+            return "Error Occured trying to start rolling clip: \(String(describing: error))"
+        case .stopFail(let error):
+            return "Failed to stop screen recording: \(String(describing: error))"
+        case .exportFail(let error):
+            return "Error attempting export clip: \(String(describing: error))"
+        case .saveFail(let error):
+            return "Error exporting clip to Photos: \(String(describing: error))"
+        }
+    }
+}
+
 class ScreenRecorder {
-    
-    func startScreenRecording() {
+    // Would be ideal to let the user know about this with an alert
+    func startScreenRecording(_ completion: @escaping (Bool, Error?) -> Void) {
         if isRecording() {
-            print("Attempting To start recording while recording is in progress")
-            return
+            completion(false, RecordingError.duplicatedRecording)
         }
         if #available(iOS 15.0, *) {
-            RPScreenRecorder.shared().startClipBuffering { err in
-                if err != nil {
-                    print("Error Occured trying to start rolling clip: \(String(describing: err))")
-                    //Would be ideal to let the user know about this with an alert
-                }
-                print("Rolling Clip started successfully")
+            RPScreenRecorder.shared().startClipBuffering { error in
+                completion(error == nil, RecordingError.recordFail(error))
             }
         }
     }
     
-    func stopScreenRecording() {
+    func stopAndExport(_ completion: @escaping (Bool, Error?) -> Void) {
+        exportClip { [weak self] success, error in
+            if error != nil {
+                completion(false, error)
+            }
+            self?.stopScreenRecording(completion)
+        }
+    }
+    
+    func stopScreenRecording(_ completion: @escaping (Bool, Error?) -> Void) {
         if !isRecording() {
-            print("Attempting the stop recording without an on going recording session")
+            completion(false, RecordingError.stopWithoutRecording)
             return
         }
         if #available(iOS 15.0, *) {
-            RPScreenRecorder.shared().stopClipBuffering { err in
-                if err != nil {
-                    print("Failed to stop screen recording")
-                    // Would be ideal to let user know about this with an alert
-                }
-                print("Rolling Clip stopped successfully")
+            RPScreenRecorder.shared().stopClipBuffering { error in
+                if error == nil { completion(true, nil) }
+                else { completion(false, RecordingError.stopFail(error)) }
             }
         }
     }
     
-    func exportClip() {
+    func exportClip(_ completion: @escaping (Bool, Error?) -> Void) {
         if !isRecording() {
-            print("Attemping to export clip while rolling clip buffer is turned off")
-            return
+            completion(false, RecordingError.exportWithoutBuffer)
         }
         // internal for which the clip is to be extracted
         // Max Value: 15 sec
         let interval = TimeInterval(15)
-        
         let clipURL = getDirectory()
         
-        print("Generating clip at URL: ", clipURL)
         if #available(iOS 15.0, *) {
             RPScreenRecorder.shared().exportClip(to: clipURL, duration: interval) { [weak self] error in
-                if error != nil {
-                    print("Error attempting export clip")
-                    // would be ideal to show an alert letting user know about the failure
-                }
-                self?.saveToPhotos(tempURL: clipURL)
+                if error == nil { self?.saveToPhotos(tempURL: clipURL, completion: completion) }
+                else { completion(false, RecordingError.exportFail(error)) }
             }
         }
     }
     
-    private func isRecording() -> Bool {
+    func isRecording() -> Bool {
         return RPScreenRecorder.shared().isRecording
     }
     
@@ -82,19 +106,16 @@ class ScreenRecorder {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_hh-mm-ss"
         let stringDate = formatter.string(from: Date())
-        tempPath.appendPathComponent(String.localizedStringWithFormat("ARVide-%@.mp4", stringDate))
+        tempPath.appendPathComponent(String.localizedStringWithFormat("ARVideo-%@.mp4", stringDate))
         return tempPath
     }
     
-    private func saveToPhotos(tempURL: URL) {
+    private func saveToPhotos(tempURL: URL, completion: @escaping (Bool, Error?) -> Void) {
         PHPhotoLibrary.shared().performChanges {
             PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: tempURL)
         } completionHandler: { success, error in
-            if success == true {
-                print("Saved rolling clip to photos")
-            } else {
-                print("Error exporting clip to Photos \(String(describing: error))")
-            }
+            if success { completion(true, nil) }
+            else { completion(false, RecordingError.saveFail(error)) }
         }
     }
 }

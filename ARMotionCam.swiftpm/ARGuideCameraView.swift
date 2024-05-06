@@ -19,8 +19,6 @@ struct ARGuideCameraView: View {
         ],
         animation: .default)
     private var trackedData: FetchedResults<TrackingData>
-    private let recorder = ScreenRecorder()
-    @State private var isRecording = false
     
     var body: some View {
         ZStack {
@@ -30,33 +28,10 @@ struct ARGuideCameraView: View {
             VStack {
                 Text("\(trackedData.suffix(2).first)")
                 Text("\(trackedData.suffix(2).last)")
-                Button(action: {}, label: {})
-                    .buttonStyle(CameraButtonnStyle(
-                        isRecording: $isRecording,
-                        action: { playOrPause()})
-                    )
+                RecorderView()
             }
         }
     }
-    
-    private func playOrPause() {
-        if recorder.isRecording() {
-            recorder.stopAndExport { success, error in
-                isRecording = recorder.isRecording()
-                if !success, let err = error as? RecordingError {
-                    print("🔴", err.errorDescription)
-                }
-            }
-        } else {
-            recorder.startScreenRecording { success, error in
-                isRecording = recorder.isRecording()
-                if !success, let error = error as? RecordingError {
-                    print("🔴",error.errorDescription)
-                }
-            }
-        }
-    }
-    
 }
 
 struct ARViewContainer: UIViewRepresentable {

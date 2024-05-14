@@ -73,7 +73,7 @@ struct ARViewContainer: UIViewRepresentable {
         }
     }
     
-    func makeCoordinator() -> Coordinator {
-        Coordinator(viewContext)
+    func makeCoordinator() -> ARTrackingCoordinator {
+        ARTrackingCoordinator(viewContext)
     }
 }

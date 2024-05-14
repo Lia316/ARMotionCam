@@ -1,5 +1,5 @@
 //
-//  ARCoordinator.swift
+//  ARTrackingCoordinator.swift
 //  ARMotionCam
 //
 //  Created by 리아 on 5/2/24.
@@ -9,7 +9,7 @@ import ARKit
 import CoreData
 import RealityKit
 
-class Coordinator: NSObject, ARSessionDelegate {
+class ARTrackingCoordinator: NSObject, ARSessionDelegate {
     private var viewContext: NSManagedObjectContext
     var timer: Timer?
     

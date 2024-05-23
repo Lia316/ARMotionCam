@@ -47,19 +47,25 @@ enum RecordingError: Error, LocalizedError {
 
 class ScreenRecorder {
     // Would be ideal to let the user know about this with an alert
-    func startScreenRecording(_ completion: @escaping (Bool, Error?) -> Void) {
+    func startScreenRecording(_ completion: @escaping (URL?, Error?) -> Void) {
         if isRecording() {
-            completion(false, RecordingError.duplicatedRecording)
+            completion(nil, RecordingError.duplicatedRecording)
         }
         if #available(iOS 15.0, *) {
+            let clipURL = createDirectory()
+
             RPScreenRecorder.shared().startClipBuffering { error in
-                completion(error == nil, RecordingError.recordFail(error))
+                if error == nil {
+                    completion(clipURL, nil)
+                } else {
+                    completion(nil, RecordingError.recordFail(error))
+                }
             }
         }
     }
     
-    func stopAndExport(_ completion: @escaping (Bool, Error?) -> Void) {
-        exportClip { [weak self] success, error in
+    func stopAndExport(at url: URL?,_ completion: @escaping (Bool, Error?) -> Void) {
+        exportClip(at: url) { [weak self] success, error in
             if error != nil {
                 completion(false, error)
             }
@@ -80,18 +86,21 @@ class ScreenRecorder {
         }
     }
     
-    func exportClip(_ completion: @escaping (Bool, Error?) -> Void) {
+    func exportClip(at url: URL?, _ completion: @escaping (Bool, Error?) -> Void) {
         if !isRecording() {
             completion(false, RecordingError.exportWithoutBuffer)
+            return
         }
-        // internal for which the clip is to be extracted
-        // Max Value: 15 sec
+        guard let url = url else {
+            completion(false, RecordingError.exportFail(nil))
+            return
+        }
+        // internal for which the clip is to be extracted (Max: 15 sec)
         let interval = TimeInterval(15)
-        let clipURL = getDirectory()
         
         if #available(iOS 15.0, *) {
-            RPScreenRecorder.shared().exportClip(to: clipURL, duration: interval) { [weak self] error in
-                if error == nil { self?.saveToPhotos(tempURL: clipURL, completion: completion) }
+            RPScreenRecorder.shared().exportClip(to: url, duration: interval) { [weak self] error in
+                if error == nil { self?.saveToPhotos(tempURL: url, completion: completion) }
                 else { completion(false, RecordingError.exportFail(error)) }
             }
         }
@@ -101,7 +110,7 @@ class ScreenRecorder {
         return RPScreenRecorder.shared().isRecording
     }
     
-    private func getDirectory() -> URL {
+    private func createDirectory() -> URL {
         var tempPath = URL(fileURLWithPath: NSTemporaryDirectory())
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_hh-mm-ss"

@@ -9,7 +9,8 @@ import SwiftUI
 
 struct RecorderView: View {
     private let recorder = ScreenRecorder()
-    @State private var isRecording = false
+    @Binding var isRecording: Bool
+    @Binding var videoURL: URL?
     
     var body: some View {
         Button(action: {}, label: {})
@@ -21,24 +22,21 @@ struct RecorderView: View {
     
     private func playOrPause() {
         if recorder.isRecording() {
-            recorder.stopAndExport { success, error in
+            recorder.stopAndExport(at: videoURL) { success, error in
                 isRecording = recorder.isRecording()
                 if !success, let err = error as? RecordingError {
                     print("🔴", err.errorDescription)
                 }
             }
         } else {
-            recorder.startScreenRecording { success, error in
+            recorder.startScreenRecording { clipURL, error in
                 isRecording = recorder.isRecording()
-                if !success, let error = error as? RecordingError {
-                    print("🔴",error.errorDescription)
+                videoURL = clipURL
+                if error != nil, let error = error as? RecordingError {
+                    print("🔴",error)
                 }
             }
         }
     }
     
-}
-
-#Preview {
-    RecorderView()
 }

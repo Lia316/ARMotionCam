@@ -31,7 +31,9 @@ let package = Package(
             ],
             capabilities: [
                 .fileAccess(.userSelectedFiles, mode: .readOnly),
-                .camera(purposeString: "This app uses the camera to overlay virtual objects in the real world.")
+                .camera(purposeString: "This app uses the camera to overlay virtual objects in the real world."),
+                .photoLibrary(purposeString: "This app uses the photo library to access ARvideo."),
+                .photoLibraryAdd(purposeString: "This app uses the photo library to add ARvideo.")
             ],
             appCategory: .photography
         )

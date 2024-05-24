@@ -20,6 +20,10 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
     private var recordInfo: RecordingInfo
     private var currentARVideo: ARVideo?
     private var isContextStart: Bool = false
+    private var lastModelPosition: SIMD3<Float>?
+    private var lastModelOrientation: simd_quatf?
+    private var lastCameraPosition: SIMD3<Float>?
+    private var lastCameraOrientation: simd_quatf?
     var timer: Timer?
     
     init(_ viewContext: NSManagedObjectContext, recordInfo: RecordingInfo) {
@@ -29,11 +33,12 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
     
     func startTracking(in arView: ARView) {
         timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
-            guard let isRec =  self?.recordInfo.isRecording,
-            let isStart = self?.isContextStart else { return }
-            
-            if isRec { self?.updateTrackingData(arView: arView) }
-            else if isStart { self?.stopTracking() }
+            guard let self = self else { return }
+            if self.recordInfo.isRecording {
+                self.updateTrackingData(arView: arView)
+            } else if self.isContextStart {
+                self.stopTracking()
+            }
         }
     }
     
@@ -58,18 +63,46 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
             .children.first as? ModelEntity {
             let targetPosition = targetEntity.position(relativeTo: nil)
             let targetOrientation = targetEntity.orientation(relativeTo: nil)
-            
-            self.saveTrackingData(type: .model, position: targetPosition, orientation: targetOrientation)
+
+            if shouldSaveData(currentPosition: targetPosition, lastPosition: lastModelPosition, currentOrientation: targetOrientation, lastOrientation: lastModelOrientation) {
+                self.saveTrackingData(type: .model, position: targetPosition, orientation: targetOrientation)
+                lastModelPosition = targetPosition
+                lastModelOrientation = targetOrientation
+            }
         }
 
         if let cameraTransform = arView.session.currentFrame?.camera.transform {
             let cameraPosition = SIMD3<Float>(cameraTransform.columns.3.x, cameraTransform.columns.3.y, cameraTransform.columns.3.z)
             let cameraOrientation = simd_quatf(cameraTransform)
 
-            self.saveTrackingData(type: .camera, position: cameraPosition, orientation: cameraOrientation)
+            if shouldSaveData(currentPosition: cameraPosition, lastPosition: lastCameraPosition, currentOrientation: cameraOrientation, lastOrientation: lastCameraOrientation) {
+                self.saveTrackingData(type: .camera, position: cameraPosition, orientation: cameraOrientation)
+                lastCameraPosition = cameraPosition
+                lastCameraOrientation = cameraOrientation
+            }
         }
     }
-    
+
+    private func shouldSaveData(currentPosition: SIMD3<Float>, lastPosition: SIMD3<Float>?, currentOrientation: simd_quatf, lastOrientation: simd_quatf?) -> Bool {
+        let positionThreshold: Float = 0.01
+        let orientationThreshold: Float = 0.01
+
+        if let lastPosition = lastPosition, let lastOrientation = lastOrientation {
+            let positionDifference = distance(currentPosition, lastPosition)
+            let orientationDifference = distance(currentOrientation.vector, lastOrientation.vector)
+            return positionDifference > positionThreshold || orientationDifference > orientationThreshold
+        }
+        return true
+    }
+
+    private func distance(_ vectorA: SIMD3<Float>, _ vectorB: SIMD3<Float>) -> Float {
+        return simd_distance(vectorA, vectorB)
+    }
+
+    private func distance(_ vectorA: SIMD4<Float>, _ vectorB: SIMD4<Float>) -> Float {
+        return simd_distance(vectorA, vectorB)
+    }
+
     private func saveTrackingData(type: TrackingType, position: SIMD3<Float>, orientation: simd_quatf) {
         currentARVideo = isContextStart ? currentARVideo : createNewARVideo(context: viewContext)
         let arVideo = currentARVideo ?? createNewARVideo(context: viewContext)

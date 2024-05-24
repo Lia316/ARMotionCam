@@ -94,8 +94,6 @@ struct ReconstructedSpaceView: UIViewRepresentable {
     }
 
     private func animateNodes(modelNode: SCNNode, cameraNode: SCNNode, modelSpaceTimes: [SpaceTime], cameraSpaceTimes: [SpaceTime], volume: SpaceVolume) {
-        print("🔴 model Space&Time Tracking", modelSpaceTimes.map{$0.stringForDebug()})
-        print("🔴 camera Space&Time Tracking", cameraSpaceTimes.map{$0.stringForDebug()})
         let modelDuration = CFTimeInterval(modelSpaceTimes.count) * 0.3
         let cameraDuration = CFTimeInterval(cameraSpaceTimes.count) * 0.3
         

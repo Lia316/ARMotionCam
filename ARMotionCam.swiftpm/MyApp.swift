@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct MyApp: App {
-    let persistence = Persistence2.shared
+    let persistence = Persistence.shared
     var body: some Scene {
         WindowGroup {
             ContentView()

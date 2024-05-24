@@ -45,6 +45,10 @@ struct ReconstructedSpaceView: UIViewRepresentable {
         // Create and add camera node
         let cameraNode = createCameraNode()
         scene.rootNode.addChildNode(cameraNode)
+        
+        // Set fixed scale for model and camera nodes
+        modelNode.scale = SCNVector3(0.007, 0.007, 0.007)
+        cameraNode.scale = SCNVector3(0.0005, 0.0005, 0.0005)
 
         // Set up the main camera
         setupMainCamera(scene: scene, volume: volume)
@@ -58,22 +62,26 @@ struct ReconstructedSpaceView: UIViewRepresentable {
         scene.rootNode.addChildNode(ambientLightNode)
 
         // Animate model and camera
-        animateNodes(modelNode: modelNode, cameraNode: cameraNode, modelSpaceTimes: modelSpaceTimes, cameraSpaceTimes: cameraSpaceTimes, volume: volume)
+        animateNodes(modelNode: modelNode, cameraNode: cameraNode, modelSpaceTimes: modelSpaceTimes, cameraSpaceTimes: cameraSpaceTimes)
     }
     
     private func createModelNode() -> SCNNode {
         let node = SCNNode()
-        // Load your model here, e.g., SCNScene(named: "your_model.scn")?.rootNode
-        node.geometry = SCNSphere(radius: 0.1) // Placeholder geometry
-        node.geometry?.firstMaterial?.diffuse.contents = UIColor.blue
+        if let modelScene = SCNScene(named: "toy_biplane_idle.usdz") {
+            if let model = modelScene.rootNode.childNodes.first {
+                node.addChildNode(model)
+            }
+        }
         return node
     }
     
     private func createCameraNode() -> SCNNode {
         let node = SCNNode()
-        // Placeholder geometry for visualization
-        node.geometry = SCNSphere(radius: 0.05)
-        node.geometry?.firstMaterial?.diffuse.contents = UIColor.red
+        if let modelScene = SCNScene(named: "iPhone_12_Pro.usdz") {
+            if let model = modelScene.rootNode.childNodes.first {
+                node.addChildNode(model)
+            }
+        }
         return node
     }
 
@@ -89,11 +97,11 @@ struct ReconstructedSpaceView: UIViewRepresentable {
         let midZ = (volume.minZ + volume.maxZ) / 2
         let maxDimension = max(volume.maxX - volume.minX, volume.maxY - volume.minY, volume.maxZ - volume.minZ)
         
-        cameraNode.position = SCNVector3(midX, midY, midZ + maxDimension * 2)
-        cameraNode.look(at: SCNVector3(midX, midY, midZ))
+        cameraNode.position = SCNVector3(midX, midY * 1.1, midZ + maxDimension)
+        cameraNode.look(at: SCNVector3(midX, midY * 0.9, midZ))
     }
-
-    private func animateNodes(modelNode: SCNNode, cameraNode: SCNNode, modelSpaceTimes: [SpaceTime], cameraSpaceTimes: [SpaceTime], volume: SpaceVolume) {
+    
+    private func animateNodes(modelNode: SCNNode, cameraNode: SCNNode, modelSpaceTimes: [SpaceTime], cameraSpaceTimes: [SpaceTime]) {
         let modelDuration = CFTimeInterval(modelSpaceTimes.count) * 0.3
         let cameraDuration = CFTimeInterval(cameraSpaceTimes.count) * 0.3
         
@@ -101,13 +109,13 @@ struct ReconstructedSpaceView: UIViewRepresentable {
         modelAnimation.values = modelSpaceTimes.map { NSValue(scnVector3: SCNVector3($0.positionX, $0.positionY, $0.positionZ)) }
         modelAnimation.duration = modelDuration
         modelAnimation.timingFunction = CAMediaTimingFunction(name: .linear)
-        modelAnimation.repeatCount = .infinity
+        modelAnimation.repeatCount = .greatestFiniteMagnitude
         
         let cameraAnimation = CAKeyframeAnimation(keyPath: "position")
         cameraAnimation.values = cameraSpaceTimes.map { NSValue(scnVector3: SCNVector3($0.positionX, $0.positionY, $0.positionZ)) }
         cameraAnimation.duration = cameraDuration
         cameraAnimation.timingFunction = CAMediaTimingFunction(name: .linear)
-        cameraAnimation.repeatCount = .infinity
+        cameraAnimation.repeatCount = .greatestFiniteMagnitude
         
         modelNode.addAnimation(modelAnimation, forKey: "modelAnimation")
         cameraNode.addAnimation(cameraAnimation, forKey: "cameraAnimation")

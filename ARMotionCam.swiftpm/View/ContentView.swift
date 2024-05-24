@@ -14,7 +14,9 @@ struct ContentView: View {
             }
             .navigationDestination(for: ViewType.self) { viewType in
                 switch viewType {
-                case .guide: ARGuideCameraView().environment(\.managedObjectContext, viewContext)
+                case .guide: ARGuideCameraView()
+                        .environment(\.managedObjectContext, viewContext)
+                        .environmentObject(RecordingInfo())
                 case .practice: ARPracticeCameraView()
                 }
             }

@@ -17,34 +17,38 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
     }
     
     private var viewContext: NSManagedObjectContext
+    private var recordInfo: RecordingInfo
     private var currentARVideo: ARVideo?
+    private var isContextStart: Bool = false
     var timer: Timer?
     
-    init(_ viewContext: NSManagedObjectContext) {
+    init(_ viewContext: NSManagedObjectContext, recordInfo: RecordingInfo) {
         self.viewContext = viewContext
-        self.currentARVideo = ARTrackingCoordinator.createNewARVideo(context: viewContext)
+        self.recordInfo = recordInfo
     }
     
     func startTracking(in arView: ARView) {
         timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
-            self?.updateTrackingData(arView: arView)
+            guard let isRec =  self?.recordInfo.isRecording,
+            let isStart = self?.isContextStart else { return }
+            
+            if isRec { self?.updateTrackingData(arView: arView) }
+            else if isStart { self?.stopTracking() }
         }
     }
     
-    func stopTracking(at videoURL: URL? = nil) {
+    private func stopTracking() {
         timer?.invalidate()
+        isContextStart = false
         
-        guard let arVideo = currentARVideo else {
-            print("No ARVideo context available")
-            return
-        }
-        arVideo.videoUrl = videoURL?.absoluteString
+        guard let arVideo = currentARVideo else { return }
+        arVideo.videoUrl = recordInfo.currentURL.absoluteString
         
         do {
             try viewContext.save()
-            print("Saved video url : \(String(describing: videoURL?.absoluteString)) successfully")
+            print("Saved video url : \(String(describing: arVideo.videoUrl)) successfully")
         } catch {
-            print("Failed to save video url \(String(describing: videoURL?.absoluteString))): \(error.localizedDescription)")
+            print("Failed to save video url \(String(describing: arVideo.videoUrl))): \(error.localizedDescription)")
         }
     }
     
@@ -67,12 +71,11 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
     }
     
     private func saveTrackingData(type: TrackingType, position: SIMD3<Float>, orientation: simd_quatf) {
-        guard let arVideo = currentARVideo else {
-            print("No ARVideo context available")
-            return
-        }
-        
+        currentARVideo = isContextStart ? currentARVideo : createNewARVideo(context: viewContext)
+        let arVideo = currentARVideo ?? createNewARVideo(context: viewContext)
         let trackingData = SpaceTime(context: viewContext)
+        
+        isContextStart = true
         
         trackingData.timestamp = Date()
         trackingData.positionX = position.x
@@ -101,7 +104,7 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
         }
     }
     
-    static func createNewARVideo(context: NSManagedObjectContext, with url: URL? = nil) -> ARVideo {
+    private func createNewARVideo(context: NSManagedObjectContext, with url: URL? = nil) -> ARVideo {
         let newARVideo = ARVideo(context: context)
         newARVideo.createdAt = Date()
         newARVideo.index = 0

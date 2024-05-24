@@ -10,8 +10,8 @@ import SwiftUI
 
 struct ARGuideCameraView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @State private var isRecording = false
-    @State private var videoURL: URL?
+    @EnvironmentObject var recordInfo: RecordingInfo
+
     @FetchRequest(
         entity: ARVideo.entity(),
         sortDescriptors: [
@@ -22,14 +22,17 @@ struct ARGuideCameraView: View {
     
     var body: some View {
         ZStack {
-            ARViewContainer(isRecording: $isRecording, videoURL: $videoURL)
+            ARViewContainer()
                 .environment(\.managedObjectContext, viewContext)
                 .edgesIgnoringSafeArea(.all)
             VStack {
                 Text("\(trackedData.count)")
-                Text("\(trackedData.suffix(2).first)")
-                Text("\(trackedData.suffix(2).last)")
-                RecorderView(isRecording: $isRecording, videoURL: $videoURL)
+                Text("\(String(describing: trackedData.last))")
+                if let carr = trackedData.last?.cameraInfoArray.last, let marr = trackedData.last?.modelInfoArray.last {
+                    Text("\(carr.stringForDebug())")
+                    Text("\(marr.stringForDebug())")
+                }
+                RecorderView(recordInfo: recordInfo)
             }
         }
     }
@@ -37,4 +40,9 @@ struct ARGuideCameraView: View {
 
 #Preview {
     ARGuideCameraView()
+}
+
+class RecordingInfo: ObservableObject {
+    @Published var isRecording = false
+    @Published var currentURL = URL(fileURLWithPath: "")
 }

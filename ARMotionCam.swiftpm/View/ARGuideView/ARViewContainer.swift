@@ -11,28 +11,24 @@ import SwiftUI
 
 struct ARViewContainer: UIViewRepresentable {
     @Environment(\.managedObjectContext) private var viewContext
-    @Binding var isRecording: Bool
-    @Binding var videoURL: URL?
+    @EnvironmentObject var recordInfo: RecordingInfo
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: true)
         
         loadBiplaneModel(in: arView)
         animateBiplaneMovement(in: arView)
+        context.coordinator.startTracking(in: arView)
         
         return arView
     }
     
-    func updateUIView(_ uiView: ARView, context: Context) {
-        if isRecording {
-            context.coordinator.startTracking(in: uiView)
-        } else {
-            context.coordinator.stopTracking(at: videoURL)
-        }
+    func updateUIView(_ uiView: ARView, context: Context) { 
+        context.coordinator.startTracking(in: uiView)
     }
     
     func makeCoordinator() -> ARTrackingCoordinator {
-        ARTrackingCoordinator(viewContext)
+        ARTrackingCoordinator(viewContext, recordInfo: recordInfo)
     }
 
     private func loadBiplaneModel(in arView: ARView) {

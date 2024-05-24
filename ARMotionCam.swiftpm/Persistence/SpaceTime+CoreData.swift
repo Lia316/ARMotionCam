@@ -28,4 +28,13 @@ class SpaceTime: NSManagedObject {
     @NSManaged public var modelInfoOrigin: ARVideo?
     @NSManaged public var cameraInfoOrigin: ARVideo?
 
+    
+    func stringForDebug() -> String {
+        return """
+                time: \(String(describing: timestamp))
+                orientation (x, y, z, w): (\(orientationX), \(orientationY), \(orientationZ), \(orientationW))
+                position (x, y, z): (\(positionX), \(positionY), \(positionZ))
+                info origin: \(modelInfoOrigin == nil ? "camera" : "model"))
+                """
+    }
 }

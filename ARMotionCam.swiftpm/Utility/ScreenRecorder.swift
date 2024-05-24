@@ -13,8 +13,9 @@
 *
 *****************************************************/
 
-import ReplayKit
 import Photos
+import ReplayKit
+import SwiftUI
 
 enum RecordingError: Error, LocalizedError {
     case duplicatedRecording
@@ -46,26 +47,40 @@ enum RecordingError: Error, LocalizedError {
 }
 
 class ScreenRecorder {
+    private var recordInfo: RecordingInfo
+    
+    init(recordInfo: RecordingInfo) {
+        self.recordInfo = recordInfo
+    }
+    
+    func isRecording() -> Bool {
+        return RPScreenRecorder.shared().isRecording
+    }
+    
     // Would be ideal to let the user know about this with an alert
-    func startScreenRecording(_ completion: @escaping (URL?, Error?) -> Void) {
+    func startScreenRecording(_ completion: @escaping (Bool, Error?) -> Void) {
         if isRecording() {
-            completion(nil, RecordingError.duplicatedRecording)
+            completion(false, RecordingError.duplicatedRecording)
         }
         if #available(iOS 15.0, *) {
             let clipURL = createDirectory()
 
-            RPScreenRecorder.shared().startClipBuffering { error in
-                if error == nil {
-                    completion(clipURL, nil)
-                } else {
-                    completion(nil, RecordingError.recordFail(error))
+            RPScreenRecorder.shared().startClipBuffering { [weak self] error in
+                DispatchQueue.main.async {
+                    if error == nil {
+                        self?.recordInfo.currentURL = clipURL
+                        self?.recordInfo.isRecording = true
+                        completion(true, nil)
+                    } else {
+                        completion(false, RecordingError.recordFail(error))
+                    }
                 }
             }
         }
     }
     
-    func stopAndExport(at url: URL?,_ completion: @escaping (Bool, Error?) -> Void) {
-        exportClip(at: url) { [weak self] success, error in
+    func stopAndExport(_ completion: @escaping (Bool, Error?) -> Void) {
+        exportClip(at: recordInfo.currentURL) { [weak self] success, error in
             if error != nil {
                 completion(false, error)
             }
@@ -79,9 +94,15 @@ class ScreenRecorder {
             return
         }
         if #available(iOS 15.0, *) {
-            RPScreenRecorder.shared().stopClipBuffering { error in
-                if error == nil { completion(true, nil) }
-                else { completion(false, RecordingError.stopFail(error)) }
+            RPScreenRecorder.shared().stopClipBuffering { [weak self] error in
+                DispatchQueue.main.async {
+                    if error == nil {
+                        self?.recordInfo.isRecording = false
+                        completion(true, nil)
+                    } else {
+                        completion(false, RecordingError.stopFail(error))
+                    }
+                }
             }
         }
     }
@@ -91,23 +112,25 @@ class ScreenRecorder {
             completion(false, RecordingError.exportWithoutBuffer)
             return
         }
-        guard let url = url else {
-            completion(false, RecordingError.exportFail(nil))
-            return
-        }
         // internal for which the clip is to be extracted (Max: 15 sec)
         let interval = TimeInterval(15)
         
         if #available(iOS 15.0, *) {
-            RPScreenRecorder.shared().exportClip(to: url, duration: interval) { [weak self] error in
-                if error == nil { self?.saveToPhotos(tempURL: url, completion: completion) }
+            RPScreenRecorder.shared().exportClip(to: recordInfo.currentURL, duration: interval) { [weak self] error in
+                if error == nil { self?.saveToPhotos(completion: completion) }
                 else { completion(false, RecordingError.exportFail(error)) }
             }
         }
     }
-    
-    func isRecording() -> Bool {
-        return RPScreenRecorder.shared().isRecording
+
+    private func saveToPhotos(completion: @escaping (Bool, Error?) -> Void) {
+        PHPhotoLibrary.shared().performChanges { [weak self] in
+            let url = self?.recordInfo.currentURL ?? URL(fileURLWithPath: "")
+            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
+        } completionHandler: { success, error in
+            if success { completion(true, nil) }
+            else { completion(false, RecordingError.saveFail(error)) }
+        }
     }
     
     private func createDirectory() -> URL {
@@ -119,12 +142,4 @@ class ScreenRecorder {
         return tempPath
     }
     
-    private func saveToPhotos(tempURL: URL, completion: @escaping (Bool, Error?) -> Void) {
-        PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: tempURL)
-        } completionHandler: { success, error in
-            if success { completion(true, nil) }
-            else { completion(false, RecordingError.saveFail(error)) }
-        }
-    }
 }

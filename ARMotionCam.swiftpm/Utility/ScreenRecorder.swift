@@ -90,13 +90,14 @@ class ScreenRecorder {
             PHPhotoLibrary.shared().performChanges { [weak self] in
                 let url = self?.recordInfo.currentURL ?? URL(fileURLWithPath: "")
                 PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
-            } completionHandler: { success, error in
+            } completionHandler: { [weak self] success, error in
                 if success {
                     // Fetch the asset URL from the photo library
-                    self.fetchLastVideoURL { url in
+                    self?.fetchLastVideoURL { url in
                         DispatchQueue.main.async {
                             if let url = url {
-                                self.recordInfo.currentURL = url
+                                self?.deleteTempFile()
+                                self?.recordInfo.currentURL = url
                                 completion(true, nil)
                             } else {
                                 completion(false, RecordingError.saveFail(error))
@@ -141,4 +142,13 @@ class ScreenRecorder {
         return tempPath
     }
     
+    private func deleteTempFile() {
+        let fileManager = FileManager.default
+        do {
+            try fileManager.removeItem(at: recordInfo.currentURL)
+            print("Temporary file deleted: \(recordInfo.currentURL)")
+        } catch {
+            print("Failed to delete temporary file: \(error.localizedDescription)")
+        }
+    }
 }

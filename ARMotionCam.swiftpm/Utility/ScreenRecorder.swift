@@ -4,47 +4,10 @@
 //
 //  Created by 리아 on 5/6/24.
 //
-/* ***************************************************
-*
-*    Title: RollingClipProj/ViewController.swift
-*    Author: Sandeep Kumar
-*    Date: 16/10/21
-*    Availability: https://github.com/mrSandeepKr/RollingClipProj/tree/main
-*
-*****************************************************/
 
 import Photos
 import ReplayKit
 import SwiftUI
-
-enum RecordingError: Error, LocalizedError {
-    case duplicatedRecording
-    case stopWithoutRecording
-    case exportWithoutBuffer
-    case recordFail(Error?)
-    case stopFail(Error?)
-    case exportFail(Error?)
-    case saveFail(Error?)
-
-    public var errorDescription: String {
-        switch self {
-        case .duplicatedRecording:
-            return "Attempting To start recording while recording is in progress"
-        case .stopWithoutRecording:
-            return "Attempting the stop recording without an on going recording session"
-        case .exportWithoutBuffer:
-            return "Attemping to export clip while rolling clip buffer is turned off"
-        case .recordFail(let error):
-            return "Error Occured trying to start rolling clip: \(String(describing: error))"
-        case .stopFail(let error):
-            return "Failed to stop screen recording: \(String(describing: error))"
-        case .exportFail(let error):
-            return "Error attempting export clip: \(String(describing: error))"
-        case .saveFail(let error):
-            return "Error exporting clip to Photos: \(String(describing: error))"
-        }
-    }
-}
 
 class ScreenRecorder {
     private var recordInfo: RecordingInfo

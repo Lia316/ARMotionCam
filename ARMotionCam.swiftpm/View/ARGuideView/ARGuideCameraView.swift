@@ -41,8 +41,3 @@ struct ARGuideCameraView: View {
 #Preview {
     ARGuideCameraView()
 }
-
-class RecordingInfo: ObservableObject {
-    @Published var isRecording = false
-    @Published var currentURL = URL(fileURLWithPath: "")
-}

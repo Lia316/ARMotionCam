@@ -85,16 +85,52 @@ class ScreenRecorder {
             }
         }
     }
-
+    
     private func saveToPhotos(completion: @escaping (Bool, Error?) -> Void) {
-        PHPhotoLibrary.shared().performChanges { [weak self] in
-            let url = self?.recordInfo.currentURL ?? URL(fileURLWithPath: "")
-            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
-        } completionHandler: { success, error in
-            if success { completion(true, nil) }
-            else { completion(false, RecordingError.saveFail(error)) }
+            PHPhotoLibrary.shared().performChanges { [weak self] in
+                let url = self?.recordInfo.currentURL ?? URL(fileURLWithPath: "")
+                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
+            } completionHandler: { success, error in
+                if success {
+                    // Fetch the asset URL from the photo library
+                    self.fetchLastVideoURL { url in
+                        DispatchQueue.main.async {
+                            if let url = url {
+                                self.recordInfo.currentURL = url
+                                completion(true, nil)
+                            } else {
+                                completion(false, RecordingError.saveFail(error))
+                            }
+                        }
+                    }
+                } else {
+                    completion(false, RecordingError.saveFail(error))
+                }
+            }
         }
-    }
+        
+        private func fetchLastVideoURL(completion: @escaping (URL?) -> Void) {
+            let fetchOptions = PHFetchOptions()
+            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+            fetchOptions.fetchLimit = 1
+
+            let fetchResult = PHAsset.fetchAssets(with: .video, options: fetchOptions)
+
+            if let lastAsset = fetchResult.firstObject {
+                let options = PHVideoRequestOptions()
+                options.isNetworkAccessAllowed = true
+
+                PHImageManager.default().requestAVAsset(forVideo: lastAsset, options: options) { (asset, _, _) in
+                    if let urlAsset = asset as? AVURLAsset {
+                        completion(urlAsset.url)
+                    } else {
+                        completion(nil)
+                    }
+                }
+            } else {
+                completion(nil)
+            }
+        }
     
     private func createDirectory() -> URL {
         var tempPath = URL(fileURLWithPath: NSTemporaryDirectory())

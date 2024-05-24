@@ -9,7 +9,7 @@
 import CoreData
 
 @objc(ARVideo)
-class ARVideo: NSManagedObject {
+class ARVideo: NSManagedObject, Identifiable {
 
     @nonobjc public class func fetchRequest() -> NSFetchRequest<ARVideo> {
         return NSFetchRequest<ARVideo>(entityName: "ARVideo")

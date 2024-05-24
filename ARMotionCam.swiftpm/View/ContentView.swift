@@ -17,7 +17,8 @@ struct ContentView: View {
                 case .guide: ARGuideCameraView()
                         .environment(\.managedObjectContext, viewContext)
                         .environmentObject(RecordingInfo())
-                case .practice: ARPracticeCameraView()
+                case .practice: VideoListView()
+                        .environment(\.managedObjectContext, viewContext)
                 }
             }
         }

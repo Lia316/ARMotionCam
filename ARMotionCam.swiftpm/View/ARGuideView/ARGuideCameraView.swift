@@ -32,7 +32,6 @@ struct ARGuideCameraView: View {
                     Text("\(carr.stringForDebug())")
                     Text("\(marr.stringForDebug())")
                 }
-                RecorderView(recordInfo: recordInfo)
             }
         }
     }

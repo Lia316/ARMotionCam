@@ -6,55 +6,69 @@
 //
 
 import ARKit
-import RealityKit
+import SceneKit
 import SwiftUI
+import ARVideoKit
 
 struct ARViewContainer: UIViewRepresentable {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var recordInfo: RecordingInfo
-    
-    func makeUIView(context: Context) -> ARView {
-        let arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: true)
+
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView()
+        container.backgroundColor = .clear
         
-        loadBiplaneModel(in: arView)
-        animateBiplaneMovement(in: arView)
-        context.coordinator.startTracking(in: arView)
+        let sceneView = ARSCNView()
+        sceneView.delegate = context.coordinator
+        sceneView.autoenablesDefaultLighting = true
+        sceneView.frame = container.bounds
+        sceneView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        // Add AR Configuration
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.planeDetection = [.horizontal, .vertical]
+        sceneView.session.run(configuration)
         
-        return arView
+        container.addSubview(sceneView)
+        
+        // Initialize the ScreenRecorder with ARSCNView
+        context.coordinator.screenRecorder = ScreenRecorder(recordInfo: recordInfo, arView: sceneView)
+        
+        // Load and animate the model
+        loadBiplaneModel(in: sceneView)
+        animateBiplaneMovement(in: sceneView)
+        context.coordinator.startTracking(in: sceneView)
+        
+        // Add RecorderView as a subview
+        let recorderView = UIHostingController(rootView: RecorderView(recordInfo: recordInfo, arView: sceneView)).view
+        recorderView?.frame = container.bounds
+        recorderView?.backgroundColor = .clear
+        recorderView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.addSubview(recorderView!)
+        
+        return container
     }
     
-    func updateUIView(_ uiView: ARView, context: Context) { 
-        context.coordinator.startTracking(in: uiView)
+    func updateUIView(_ uiView: UIView, context: Context) {
+        if let sceneView = uiView.subviews.first(where: { $0 is ARSCNView }) as? ARSCNView {
+            context.coordinator.startTracking(in: sceneView)
+        }
     }
     
     func makeCoordinator() -> ARTrackingCoordinator {
         ARTrackingCoordinator(viewContext, recordInfo: recordInfo)
     }
-
-    private func loadBiplaneModel(in arView: ARView) {
-        let anchor = AnchorEntity()
-        
-        if let biplane = try? ModelEntity.loadModel(named: "toy_biplane_idle.usdz") {
-            anchor.addChild(biplane)
-            playAnimations(for: biplane)
-        } else {
-            print("Error loading the biplane model")
-        }
-        
-        arView.scene.addAnchor(anchor)
-    }
-
-    private func playAnimations(for entity: ModelEntity) {
-        let animationTransitionDuration: TimeInterval = 1.25
-        for animation in entity.availableAnimations {
-            entity.playAnimation(animation.repeat(duration: .infinity),
-                                 transitionDuration: animationTransitionDuration,
-                                 startsPaused: false)
-        }
-    }
     
-    private func animateBiplaneMovement(in arView: ARView) {
-        guard let biplane = (arView.scene.anchors.first as? AnchorEntity)?.children.first as? ModelEntity else { return }
+    private func loadBiplaneModel(in sceneView: ARSCNView) {
+        let scene = SCNScene(named: "toy_biplane_idle.usdz")
+        let node = scene?.rootNode.childNodes.first ?? SCNNode()
+        node.name = "model"
+        node.scale = SCNVector3(0.01, 0.01, 0.01)  // Scale the biplane model
+        sceneView.scene.rootNode.addChildNode(node)
+    }
+
+    private func animateBiplaneMovement(in sceneView: ARSCNView) {
+        guard let biplane = sceneView.scene.rootNode.childNode(withName: "model", recursively: true) else { return }
         
         let radius: Float = 1.0 // unit: meter
         let speed: Float = 0.01
@@ -64,12 +78,13 @@ struct ARViewContainer: UIViewRepresentable {
             angle += speed
             let x = radius * sin(angle)
             let z = radius * cos(angle)
-            let halfAngle = radius * Float.pi * 0.5
             
-            biplane.transform.translation = [x, 0, z]
-            biplane.transform.rotation = simd_quatf(angle: angle + halfAngle, axis: [0, 1, 0])
+            let halfAngle = angle + Float.pi / 2
             
-            // Stop the animation after completing n full circle
+            biplane.position = SCNVector3(x, 0, z)
+            biplane.eulerAngles = SCNVector3(0, halfAngle, 0)
+            
+            // Stop the animation after completing n full circles
             let n: Float = 5.0
             if angle >= n * 2 * Float.pi * radius {
                 timer.invalidate()

@@ -8,8 +8,9 @@
 import ARKit
 import CoreData
 import RealityKit
+import SceneKit
 
-class ARTrackingCoordinator: NSObject, ARSessionDelegate {
+class ARTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDelegate {
     
     enum TrackingType: String {
         case camera = "Camera"
@@ -20,10 +21,11 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
     private var recordInfo: RecordingInfo
     private var currentARVideo: ARVideo?
     private var isContextStart: Bool = false
-    private var lastModelPosition: SIMD3<Float>?
-    private var lastModelOrientation: simd_quatf?
+    private var lastModelPosition: SCNVector3?
+    private var lastModelOrientation: SCNVector4?
     private var lastCameraPosition: SIMD3<Float>?
     private var lastCameraOrientation: simd_quatf?
+    var screenRecorder: ScreenRecorder?
     var timer: Timer?
     
     init(_ viewContext: NSManagedObjectContext, recordInfo: RecordingInfo) {
@@ -31,7 +33,7 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
         self.recordInfo = recordInfo
     }
     
-    func startTracking(in arView: ARView) {
+    func startTracking(in arView: ARSCNView) {
         timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             if self.recordInfo.isRecording {
@@ -57,13 +59,12 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
         }
     }
     
-    private func updateTrackingData(arView: ARView) {
+    private func updateTrackingData(arView: ARSCNView) {
         // Track target's position and orientation relative to world coordinates
-        if let targetEntity = (arView.scene.anchors.first as? AnchorEntity)?
-            .children.first as? ModelEntity {
-            let targetPosition = targetEntity.position(relativeTo: nil)
-            let targetOrientation = targetEntity.orientation(relativeTo: nil)
-
+        if let targetEntity = arView.scene.rootNode.childNodes.first(where: { $0.name == "model" }) {
+            let targetPosition = targetEntity.position
+            let targetOrientation = targetEntity.orientation
+            
             if shouldSaveData(currentPosition: targetPosition, lastPosition: lastModelPosition, currentOrientation: targetOrientation, lastOrientation: lastModelOrientation) {
                 self.saveTrackingData(type: .model, position: targetPosition, orientation: targetOrientation)
                 lastModelPosition = targetPosition
@@ -83,6 +84,18 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
         }
     }
 
+    private func shouldSaveData(currentPosition: SCNVector3, lastPosition: SCNVector3?, currentOrientation: SCNVector4, lastOrientation: SCNVector4?) -> Bool {
+        let positionThreshold: Float = 0.01
+        let orientationThreshold: Float = 0.01
+
+        if let lastPosition = lastPosition, let lastOrientation = lastOrientation {
+            let positionDifference = distance(currentPosition, lastPosition)
+            let orientationDifference = distance(currentOrientation, lastOrientation)
+            return positionDifference > positionThreshold || orientationDifference > orientationThreshold
+        }
+        return true
+    }
+
     private func shouldSaveData(currentPosition: SIMD3<Float>, lastPosition: SIMD3<Float>?, currentOrientation: simd_quatf, lastOrientation: simd_quatf?) -> Bool {
         let positionThreshold: Float = 0.01
         let orientationThreshold: Float = 0.01
@@ -95,12 +108,54 @@ class ARTrackingCoordinator: NSObject, ARSessionDelegate {
         return true
     }
 
+    private func distance(_ vectorA: SCNVector3, _ vectorB: SCNVector3) -> Float {
+        return simd_distance(SIMD3<Float>(vectorA.x, vectorA.y, vectorA.z), SIMD3<Float>(vectorB.x, vectorB.y, vectorB.z))
+    }
+
+    private func distance(_ vectorA: SCNVector4, _ vectorB: SCNVector4) -> Float {
+        return simd_distance(SIMD4<Float>(vectorA.x, vectorA.y, vectorA.z, vectorA.w), SIMD4<Float>(vectorB.x, vectorB.y, vectorB.z, vectorB.w))
+    }
+
     private func distance(_ vectorA: SIMD3<Float>, _ vectorB: SIMD3<Float>) -> Float {
         return simd_distance(vectorA, vectorB)
     }
 
     private func distance(_ vectorA: SIMD4<Float>, _ vectorB: SIMD4<Float>) -> Float {
         return simd_distance(vectorA, vectorB)
+    }
+
+    private func saveTrackingData(type: TrackingType, position: SCNVector3, orientation: SCNVector4) {
+        currentARVideo = isContextStart ? currentARVideo : createNewARVideo(context: viewContext)
+        let arVideo = currentARVideo ?? createNewARVideo(context: viewContext)
+        let trackingData = SpaceTime(context: viewContext)
+        
+        isContextStart = true
+        
+        trackingData.timestamp = Date()
+        trackingData.positionX = position.x
+        trackingData.positionY = position.y
+        trackingData.positionZ = position.z
+        trackingData.orientationX = orientation.x
+        trackingData.orientationY = orientation.y
+        trackingData.orientationZ = orientation.z
+        trackingData.orientationW = orientation.w
+        
+        switch type {
+        case .camera:
+            trackingData.cameraInfoOrigin = arVideo
+            arVideo.addToCameraInfo(trackingData)
+        case .model:
+            trackingData.modelInfoOrigin = arVideo
+            arVideo.addToModelInfo(trackingData)
+        }
+        
+        do {
+            try viewContext.save()
+            print("Saved \(type)_\(String(describing: trackingData.timestamp)) successfully")
+            print("Position: \(position), Orientation: \(orientation)")
+        } catch {
+            print("Failed to save \(type)_\(String(describing: trackingData.timestamp)): \(error.localizedDescription)")
+        }
     }
 
     private func saveTrackingData(type: TrackingType, position: SIMD3<Float>, orientation: simd_quatf) {

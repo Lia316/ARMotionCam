@@ -5,150 +5,115 @@
 //  Created by 리아 on 5/6/24.
 //
 
+import ARVideoKit
+import ARKit
 import Photos
-import ReplayKit
 import SwiftUI
 
-class ScreenRecorder {
+class ScreenRecorder: NSObject, RecordARDelegate, RenderARDelegate {
     private var recordInfo: RecordingInfo
+    private var recorder: RecordAR?
     
-    init(recordInfo: RecordingInfo) {
+    init(recordInfo: RecordingInfo, arView: ARSCNView) {
         self.recordInfo = recordInfo
+        super.init()
+        
+        recorder = RecordAR(ARSceneKit: arView)
+        recorder?.delegate = self
+        recorder?.renderAR = self
+        recorder?.onlyRenderWhileRecording = false
+        recorder?.enableAdjustEnvironmentLighting = true
+        recorder?.prepare()
     }
     
     func isRecording() -> Bool {
-        return RPScreenRecorder.shared().isRecording
+        return recorder?.status == .recording
     }
     
-    // Would be ideal to let the user know about this with an alert
     func startScreenRecording(_ completion: @escaping (Bool, Error?) -> Void) {
         if isRecording() {
             completion(false, RecordingError.duplicatedRecording)
+            return
         }
-        if #available(iOS 15.0, *) {
-            let clipURL = createDirectory()
+        recorder?.record(forDuration: 0.5) { [weak self] videoPath in
+            guard let self = self else { return }
+            self.recordInfo.isRecording = true
+            self.recordInfo.currentURL = videoPath
+            completion(true, nil)
 
-            RPScreenRecorder.shared().startClipBuffering { [weak self] error in
-                DispatchQueue.main.async {
-                    if error == nil {
-                        self?.recordInfo.currentURL = clipURL
-                        self?.recordInfo.isRecording = true
-                        completion(true, nil)
-                    } else {
-                        completion(false, RecordingError.recordFail(error))
-                    }
-                }
-            }
         }
     }
     
     func stopAndExport(_ completion: @escaping (Bool, Error?) -> Void) {
-        exportClip(at: recordInfo.currentURL) { [weak self] success, error in
-            if error != nil {
-                completion(false, error)
-            }
-            self?.stopScreenRecording(completion)
-        }
-    }
-    
-    func stopScreenRecording(_ completion: @escaping (Bool, Error?) -> Void) {
         if !isRecording() {
             completion(false, RecordingError.stopWithoutRecording)
             return
         }
-        if #available(iOS 15.0, *) {
-            RPScreenRecorder.shared().stopClipBuffering { [weak self] error in
-                DispatchQueue.main.async {
-                    if error == nil {
-                        self?.recordInfo.isRecording = false
+        
+        recorder?.stop() { url in
+            self.recordInfo.currentURL = url
+            self.saveToPhotos(url: url, completion: completion)
+        }
+    }
+    
+    private func saveToPhotos(url: URL, completion: @escaping (Bool, Error?) -> Void) {
+        PHPhotoLibrary.shared().performChanges {
+            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
+        } completionHandler: { success, error in
+            if success {
+                self.deleteTempFile(url: url)
+                self.fetchLastVideoURL { newURL in
+                    if let newURL = newURL {
+                        self.recordInfo.currentURL = newURL
                         completion(true, nil)
                     } else {
-                        completion(false, RecordingError.stopFail(error))
-                    }
-                }
-            }
-        }
-    }
-    
-    func exportClip(at url: URL?, _ completion: @escaping (Bool, Error?) -> Void) {
-        if !isRecording() {
-            completion(false, RecordingError.exportWithoutBuffer)
-            return
-        }
-        // internal for which the clip is to be extracted (Max: 15 sec)
-        let interval = TimeInterval(15)
-        
-        if #available(iOS 15.0, *) {
-            RPScreenRecorder.shared().exportClip(to: recordInfo.currentURL, duration: interval) { [weak self] error in
-                if error == nil { self?.saveToPhotos(completion: completion) }
-                else { completion(false, RecordingError.exportFail(error)) }
-            }
-        }
-    }
-    
-    private func saveToPhotos(completion: @escaping (Bool, Error?) -> Void) {
-            PHPhotoLibrary.shared().performChanges { [weak self] in
-                let url = self?.recordInfo.currentURL ?? URL(fileURLWithPath: "")
-                PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
-            } completionHandler: { [weak self] success, error in
-                if success {
-                    // Fetch the asset URL from the photo library
-                    self?.fetchLastVideoURL { url in
-                        DispatchQueue.main.async {
-                            if let url = url {
-                                self?.deleteTempFile()
-                                self?.recordInfo.currentURL = url
-                                completion(true, nil)
-                            } else {
-                                completion(false, RecordingError.saveFail(error))
-                            }
-                        }
-                    }
-                } else {
-                    completion(false, RecordingError.saveFail(error))
-                }
-            }
-        }
-        
-        private func fetchLastVideoURL(completion: @escaping (URL?) -> Void) {
-            let fetchOptions = PHFetchOptions()
-            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-            fetchOptions.fetchLimit = 1
-
-            let fetchResult = PHAsset.fetchAssets(with: .video, options: fetchOptions)
-
-            if let lastAsset = fetchResult.firstObject {
-                let options = PHVideoRequestOptions()
-                options.isNetworkAccessAllowed = true
-
-                PHImageManager.default().requestAVAsset(forVideo: lastAsset, options: options) { (asset, _, _) in
-                    if let urlAsset = asset as? AVURLAsset {
-                        completion(urlAsset.url)
-                    } else {
-                        completion(nil)
+                        completion(false, RecordingError.saveFail(error))
                     }
                 }
             } else {
-                completion(nil)
+                completion(false, RecordingError.saveFail(error))
             }
         }
-    
-    private func createDirectory() -> URL {
-        var tempPath = URL(fileURLWithPath: NSTemporaryDirectory())
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd_hh-mm-ss"
-        let stringDate = formatter.string(from: Date())
-        tempPath.appendPathComponent(String.localizedStringWithFormat("ARVideo-%@.mp4", stringDate))
-        return tempPath
     }
     
-    private func deleteTempFile() {
+    private func fetchLastVideoURL(completion: @escaping (URL?) -> Void) {
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        fetchOptions.fetchLimit = 1
+
+        let fetchResult = PHAsset.fetchAssets(with: .video, options: fetchOptions)
+
+        if let lastAsset = fetchResult.firstObject {
+            let options = PHVideoRequestOptions()
+            options.isNetworkAccessAllowed = true
+
+            PHImageManager.default().requestAVAsset(forVideo: lastAsset, options: options) { (asset, _, _) in
+                if let urlAsset = asset as? AVURLAsset {
+                    completion(urlAsset.url)
+                } else {
+                    completion(nil)
+                }
+            }
+        } else {
+            completion(nil)
+        }
+    }
+    
+    private func deleteTempFile(url: URL) {
         let fileManager = FileManager.default
         do {
-            try fileManager.removeItem(at: recordInfo.currentURL)
-            print("Temporary file deleted: \(recordInfo.currentURL)")
+            try fileManager.removeItem(at: url)
+            print("Temporary file deleted: \(url)")
         } catch {
             print("Failed to delete temporary file: \(error.localizedDescription)")
         }
     }
+    
+    // RecordARDelegate methods
+    func recorder(didEndRecording path: URL, with noError: Bool) {}
+    func recorder(didFailRecording error: Error?, and status: String) {}
+    func recorder(willEnterBackground status: ARVideoKit.RecordARStatus) {}
+    
+    // RenderARDelegate method
+    func frame(didRender buffer: CVPixelBuffer, with time: CMTime, using rawBuffer: CVPixelBuffer) {}
 }

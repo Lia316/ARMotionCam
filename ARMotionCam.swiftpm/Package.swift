@@ -38,9 +38,15 @@ let package = Package(
             appCategory: .photography
         )
     ],
+    dependencies: [
+        .package(url: "https://github.com/AFathi/ARVideoKit.git", .exact("1.6.0"))
+    ],
     targets: [
         .executableTarget(
             name: "AppModule",
+            dependencies: [
+                .product(name: "ARVideoKit", package: "ARVideoKit")
+            ],
             path: ".",
             resources: [
                 .process("Resources")

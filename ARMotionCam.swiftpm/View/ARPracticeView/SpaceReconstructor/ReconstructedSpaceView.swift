@@ -62,7 +62,7 @@ struct ReconstructedSpaceView: UIViewRepresentable {
         scene.rootNode.addChildNode(ambientLightNode)
 
         // Animate model and camera
-        animateNodes(modelNode: modelNode, cameraNode: cameraNode, modelSpaceTimes: modelSpaceTimes, cameraSpaceTimes: cameraSpaceTimes)
+        animateNodes(modelNode: modelNode, cameraNode: cameraNode, modelSpaceTimes: modelSpaceTimes, cameraSpaceTimes: cameraSpaceTimes, scene: scene)
     }
     
     private func createModelNode() -> SCNNode {
@@ -101,7 +101,7 @@ struct ReconstructedSpaceView: UIViewRepresentable {
         cameraNode.look(at: SCNVector3(midX, midY * 0.9, midZ))
     }
     
-    private func animateNodes(modelNode: SCNNode, cameraNode: SCNNode, modelSpaceTimes: [SpaceTime], cameraSpaceTimes: [SpaceTime]) {
+    private func animateNodes(modelNode: SCNNode, cameraNode: SCNNode, modelSpaceTimes: [SpaceTime], cameraSpaceTimes: [SpaceTime], scene: SCNScene) {
         let modelDuration = CFTimeInterval(modelSpaceTimes.count) * 0.3
         let cameraDuration = CFTimeInterval(cameraSpaceTimes.count) * 0.3
         
@@ -119,5 +119,40 @@ struct ReconstructedSpaceView: UIViewRepresentable {
         
         modelNode.addAnimation(modelAnimation, forKey: "modelAnimation")
         cameraNode.addAnimation(cameraAnimation, forKey: "cameraAnimation")
+        
+        // Add trajectory dots
+        addTrajectoryDots(scene: scene, spaceTimes: modelSpaceTimes, color: .red, duration: modelDuration)
+        addTrajectoryDots(scene: scene, spaceTimes: cameraSpaceTimes, color: .blue, duration: cameraDuration)
+    }
+    
+    private func addTrajectoryDots(scene: SCNScene, spaceTimes: [SpaceTime], color: UIColor, duration: CFTimeInterval) {
+        let dotRadius: CGFloat = 0.002
+        let dotGeometry = SCNSphere(radius: dotRadius)
+        dotGeometry.firstMaterial?.diffuse.contents = color
+
+        var dotNodes: [SCNNode] = []
+        for _ in spaceTimes {
+            let dotNode = SCNNode(geometry: dotGeometry)
+            dotNode.isHidden = true
+            dotNodes.append(dotNode)
+            scene.rootNode.addChildNode(dotNode)
+        }
+
+        let totalDots = dotNodes.count
+        let interval = duration / CFTimeInterval(totalDots)
+
+        Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
+            for i in 0..<totalDots {
+                DispatchQueue.main.asyncAfter(deadline: .now() + CFTimeInterval(i) * interval) {
+                    dotNodes[i].isHidden = false
+                    let position = spaceTimes[i]
+                    dotNodes[i].position = SCNVector3(position.positionX, position.positionY, position.positionZ)
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                dotNodes.forEach { $0.isHidden = true }
+            }
+        }
     }
 }

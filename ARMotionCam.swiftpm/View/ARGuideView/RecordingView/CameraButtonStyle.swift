@@ -9,10 +9,10 @@ import SwiftUI
 
 struct CameraButtonnStyle: ButtonStyle {
     @EnvironmentObject var recordInfo: RecordingInfo
-//    @Binding var isRecording: Bool
+    var recorder: ScreenRecorder
     var action: (() -> Void)?
     var innerCircleWidth: CGFloat {
-        self.recordInfo.isRecording ? 32 : 49
+        self.recorder.isRecording() ? 32 : 49
     }
     
     func makeBody(configuration: Configuration) -> some View {
@@ -22,7 +22,7 @@ struct CameraButtonnStyle: ButtonStyle {
                 .foregroundColor(.red)
                 .frame(width: 65, height: 65)
 
-            RoundedRectangle(cornerRadius: recordInfo.isRecording ? 8 : innerCircleWidth / 2)
+            RoundedRectangle(cornerRadius: recorder.isRecording() ? 8 : innerCircleWidth / 2)
                 .foregroundColor(.red)
                 .frame(width: innerCircleWidth, height: innerCircleWidth)
 
@@ -33,15 +33,5 @@ struct CameraButtonnStyle: ButtonStyle {
                 action?()
             }
         }
-    }
-}
-
-struct CameraButtonStyle_Previews: PreviewProvider {
-    static var previews: some View {
-        @State var isRecord = false
-        Button(action: {}, label: {
-            Text("Button")
-        })
-        .buttonStyle(CameraButtonnStyle())
     }
 }

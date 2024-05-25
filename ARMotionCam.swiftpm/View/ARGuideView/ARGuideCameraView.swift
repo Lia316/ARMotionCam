@@ -27,11 +27,11 @@ struct ARGuideCameraView: View {
                 .edgesIgnoringSafeArea(.all)
             VStack {
                 Text("\(trackedData.count)")
-                Text("\(String(describing: trackedData.last))")
-                if let carr = trackedData.last?.cameraInfoArray.last, let marr = trackedData.last?.modelInfoArray.last {
-                    Text("\(carr.stringForDebug())")
-                    Text("\(marr.stringForDebug())")
-                }
+//                Text("\(String(describing: trackedData.last))")
+//                if let carr = trackedData.last?.cameraInfoArray.last, let marr = trackedData.last?.modelInfoArray.last {
+//                    Text("\(carr.stringForDebug())")
+//                    Text("\(marr.stringForDebug())")
+//                }
             }
         }
     }

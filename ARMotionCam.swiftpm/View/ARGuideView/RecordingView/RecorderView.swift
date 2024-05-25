@@ -21,25 +21,15 @@ struct RecorderView: View {
         VStack {
             Spacer()
             Button(action: {}, label: {})
-                .buttonStyle(CameraButtonnStyle(action: { playOrPause() }))
+                .buttonStyle(CameraButtonnStyle(recorder: recorder, action: { playOrPause() }))
         }
     }
     
     private func playOrPause() {
         if recorder.isRecording() {
-            recorder.stopAndExport { success, error in
-                recordInfo.isRecording = recorder.isRecording()
-                if !success, let err = error as? RecordingError {
-                    print("🔴", err.errorDescription)
-                }
-            }
+            recorder.stopAndExport()
         } else {
-            recorder.startScreenRecording { success, error in
-                recordInfo.isRecording = recorder.isRecording()
-                if !success, let error = error as? RecordingError {
-                    print("🔴", error)
-                }
-            }
+            recorder.startScreenRecording()
         }
     }
 }

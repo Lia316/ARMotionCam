@@ -23,6 +23,7 @@ class ScreenRecorder: NSObject, RecordARDelegate, RenderARDelegate {
         recorder?.renderAR = self
         recorder?.onlyRenderWhileRecording = false
         recorder?.enableAdjustEnvironmentLighting = true
+        recorder?.inputViewOrientations = [.landscapeLeft, .landscapeRight]
         recorder?.prepare()
     }
     
@@ -30,48 +31,24 @@ class ScreenRecorder: NSObject, RecordARDelegate, RenderARDelegate {
         return recorder?.status == .recording
     }
     
-    func startScreenRecording(_ completion: @escaping (Bool, Error?) -> Void) {
-        if isRecording() {
-            completion(false, RecordingError.duplicatedRecording)
-            return
-        }
-        recorder?.record(forDuration: 0.5) { [weak self] videoPath in
-            guard let self = self else { return }
-            self.recordInfo.isRecording = true
-            self.recordInfo.currentURL = videoPath
-            completion(true, nil)
-
+    func startScreenRecording() {
+        recorder?.record()
+        DispatchQueue.main.async {
+            self.recordInfo.isRecording = self.isRecording()
         }
     }
     
-    func stopAndExport(_ completion: @escaping (Bool, Error?) -> Void) {
-        if !isRecording() {
-            completion(false, RecordingError.stopWithoutRecording)
-            return
-        }
-        
-        recorder?.stop() { url in
-            self.recordInfo.currentURL = url
-            self.saveToPhotos(url: url, completion: completion)
-        }
-    }
-    
-    private func saveToPhotos(url: URL, completion: @escaping (Bool, Error?) -> Void) {
-        PHPhotoLibrary.shared().performChanges {
-            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url)
-        } completionHandler: { success, error in
-            if success {
-                self.deleteTempFile(url: url)
-                self.fetchLastVideoURL { newURL in
+    func stopAndExport() {
+        recorder?.stopAndExport() { videoPath, permissionStatus, exported in
+            self.fetchLastVideoURL {  newURL in
+                DispatchQueue.main.async {
                     if let newURL = newURL {
                         self.recordInfo.currentURL = newURL
-                        completion(true, nil)
-                    } else {
-                        completion(false, RecordingError.saveFail(error))
                     }
                 }
-            } else {
-                completion(false, RecordingError.saveFail(error))
+            }
+            DispatchQueue.main.async {
+                self.recordInfo.isRecording = self.isRecording()
             }
         }
     }
@@ -96,16 +73,6 @@ class ScreenRecorder: NSObject, RecordARDelegate, RenderARDelegate {
             }
         } else {
             completion(nil)
-        }
-    }
-    
-    private func deleteTempFile(url: URL) {
-        let fileManager = FileManager.default
-        do {
-            try fileManager.removeItem(at: url)
-            print("Temporary file deleted: \(url)")
-        } catch {
-            print("Failed to delete temporary file: \(error.localizedDescription)")
         }
     }
     

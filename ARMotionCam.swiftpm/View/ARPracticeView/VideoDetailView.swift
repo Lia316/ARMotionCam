@@ -16,38 +16,29 @@ struct VideoDetailView: View {
     @State private var playerLooper: AVPlayerLooper?
     
     var body: some View {
-        HStack {
-            VStack {
+        HStack(spacing:0) {
+            VStack(spacing:0) {
                 if let videoUrlString = video.videoUrl, let videoUrl = URL(string: videoUrlString) {
                     VideoPlayer(player: player)
                         .onAppear {
                             fetchSpaceTimeData()
                             playVideo(of: videoUrl)
                         }
-                        .frame(height: 300)
                         .disabled(true)
-                    Text(video.createdAt?.formatted() ?? "Unknown Date")
-                        .padding()
                 } else {
                     Text("Invalid video URL")
                 }
                 
                 if !spaceTimes.isEmpty {
                     ReconstructedSpaceView(spaceTimes: $spaceTimes)
-                        .frame(height: 300)
-//                        .aspectRatio(1.0, contentMode: .fit)
-//                        .padding()
                 } else {
                     Text("Loading space data...")
-                        .frame(height: 300)
                 }
             }
-            Text("Additional Information")
-                .font(.title)
-                .padding()
+            .ignoresSafeArea()
+            ARPracticeCameraView(arVideo: video)
+                .environmentObject(PracticeInfo())
         }
-        .navigationTitle("Video Detail")
-        .navigationBarTitleDisplayMode(.inline)
     }
     
     private func playVideo(of videoUrl: URL) {

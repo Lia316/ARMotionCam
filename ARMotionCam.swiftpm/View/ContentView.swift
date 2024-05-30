@@ -9,9 +9,19 @@ struct ContentView: View {
             Button("guide", systemImage: "camera") {
                 path.append(.guide)
             }
+            .foregroundColor(.white)
+            .padding()
+            .background(Color.accentColor)
+            .cornerRadius(8)
+            
             Button("practice", systemImage: "camera") {
                 path.append(.practice)
             }
+            .foregroundColor(.white)
+            .padding()
+            .background(Color.accentColor)
+            .cornerRadius(8)
+            
             .navigationDestination(for: ViewType.self) { viewType in
                 switch viewType {
                 case .guide: ARGuideCameraView()

@@ -22,7 +22,7 @@ struct ARPracticeCameraView: View {
                 .edgesIgnoringSafeArea(.all)
             VStack {
                 Text("Current Difference: \(practiceInfo.currentDifference, specifier: "%.4f")")
-                Text("Difference Sum: \(practiceInfo.diffSum, specifier: "%.4f")")
+                Text("Difference Avg: \(practiceInfo.avgDifference, specifier: "%.4f")")
             }
         }
     }

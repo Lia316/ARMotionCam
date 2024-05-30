@@ -86,11 +86,16 @@ class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDeleg
             let positionDifference = distance(cameraPosition, guidePosition)
             let orientationDifference = distance(cameraOrientation.vector, guideOrientation.vector)
             
-            // Update practiceInfo
             let totalDifference = Double(positionDifference + orientationDifference)
+            let n = Double(currentCameraIndex)
+            let prevDiffRatio = Double(n / (n + 1.0))
+            let currDiffRatio = Double(1.0 / (n + 1.0))
+            let prevDifference = prevDiffRatio * self.practiceInfo.avgDifference
+            
+            // Update practiceInfo
             DispatchQueue.main.async {
                 self.practiceInfo.currentDifference = totalDifference
-                self.practiceInfo.diffSum += totalDifference
+                self.practiceInfo.avgDifference = prevDifference + totalDifference * currDiffRatio
             }
             
             currentCameraIndex += 1

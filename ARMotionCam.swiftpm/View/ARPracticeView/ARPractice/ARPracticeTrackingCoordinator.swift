@@ -7,29 +7,28 @@
 
 import ARKit
 import CoreData
-import RealityKit
 import SceneKit
 import SwiftUI
 
 class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDelegate {
     
-    enum TrackingType: String {
-        case camera = "Camera"
-        case model = "Model"
+    enum AnimationState {
+        case playing
+        case stopped
+        case ready
     }
     
     private var viewContext: NSManagedObjectContext
     @ObservedObject var practiceInfo: PracticeInfo
     private var cameraSpaceTime: [SpaceTime]
     private var modelSpaceTime: [SpaceTime]
-    
-    private var lastModelPosition: SCNVector3?
-    private var lastModelOrientation: SCNVector4?
-    private var lastCameraPosition: SIMD3<Float>?
-    private var lastCameraOrientation: simd_quatf?
+
     private var currentCameraIndex = 0
     private var currentModelIndex = 0
-    var timer: Timer?
+    private var animationState = AnimationState.stopped
+    private var posAniPlayer: SCNAnimationPlayer?
+    private var oriAniPlayer: SCNAnimationPlayer?
+    private var timer: Timer?
     
     init(_ viewContext: NSManagedObjectContext, practiceInfo: PracticeInfo, guideData: ARVideo) {
         self.viewContext = viewContext
@@ -40,36 +39,78 @@ class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDeleg
     
     func startTracking(in arView: ARSCNView) {
         timer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            if self.practiceInfo.isRecording {
-                self.updateTrackingData(arView: arView)
-                self.animateModel(in: arView)
-            } else {
-                self.stopTracking()
-            }
+            self?.update(arView)
         }
     }
     
-    private func stopTracking() {
+    func stopTracking() {
         timer?.invalidate()
+        timer = nil
+        animationState = .stopped
+        posAniPlayer?.stop()
+        oriAniPlayer?.stop()
     }
     
-    // Animate the model using fetched data
-    private func animateModel(in arView: ARSCNView) {
-        guard let modelNode = arView.scene.rootNode.childNode(withName: "model", recursively: true) else { return }
-        
+    private func update(_ arView: ARSCNView) {
+        guard practiceInfo.isRecording else {
+            stopTracking()
+            return
+        }
+        updateTrackingData(arView: arView)
+        animateModel()
+    }
+    
+    private func animateModel() {
         if currentModelIndex < modelSpaceTime.count {
-            let modelData = modelSpaceTime[currentModelIndex]
-            modelNode.position = SCNVector3(modelData.positionX, modelData.positionY, modelData.positionZ)
-            modelNode.orientation = SCNVector4(modelData.orientationX, modelData.orientationY, modelData.orientationZ, modelData.orientationW)
             currentModelIndex += 1
         } else {
-            // Reset animation
             currentModelIndex = 0
+        }
+        updateAnimationState(to: animationState)
+    }
+    
+    func registerModelAnimation(in arView: ARSCNView) {
+        guard let modelNode = arView.scene.rootNode.childNode(withName: "model", recursively: true) else { return }
+        let modelDuration = CFTimeInterval(modelSpaceTime.count) * 0.3
+
+        let positionAnimation = CAKeyframeAnimation(keyPath: "position")
+        positionAnimation.values = modelSpaceTime.map { NSValue(scnVector3: SCNVector3($0.positionX, $0.positionY, $0.positionZ)) }
+        positionAnimation.duration = modelDuration
+        positionAnimation.timingFunction = CAMediaTimingFunction(name: .linear)
+        positionAnimation.repeatCount = .greatestFiniteMagnitude
+
+        let orientationAnimation = CAKeyframeAnimation(keyPath: "orientation")
+        orientationAnimation.values = modelSpaceTime.map { NSValue(scnVector4: SCNVector4($0.orientationX, $0.orientationY, $0.orientationZ, $0.orientationW)) }
+        orientationAnimation.duration = modelDuration
+        orientationAnimation.timingFunction = CAMediaTimingFunction(name: .linear)
+        orientationAnimation.repeatCount = .greatestFiniteMagnitude
+        
+        modelNode.addAnimation(positionAnimation, forKey: "position")
+        modelNode.addAnimation(orientationAnimation, forKey: "orientation")
+        
+        posAniPlayer = modelNode.animationPlayer(forKey: "position")
+        oriAniPlayer = modelNode.animationPlayer(forKey: "orientation")
+        
+        updateAnimationState(to: .stopped)
+    }
+    
+    private func updateAnimationState(to state: AnimationState) {
+        guard let positionPlayer = posAniPlayer, let orientationPlayer = oriAniPlayer else { return }
+        
+        switch state {
+        case .playing:
+            break
+        case .stopped:
+            positionPlayer.stop()
+            orientationPlayer.stop()
+            animationState = .ready
+        case .ready:
+            positionPlayer.play()
+            orientationPlayer.play()
+            animationState = .playing
         }
     }
     
-    // Update current difference & difference sum in PracticeInfo
     private func updateTrackingData(arView: ARSCNView) {
         guard let currentFrame = arView.session.currentFrame else { return }
         
@@ -103,9 +144,6 @@ class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDeleg
             // Reset tracking
             currentCameraIndex = 0
         }
-        
-        lastCameraPosition = cameraPosition
-        lastCameraOrientation = cameraOrientation
     }
 
     private func distance(_ vectorA: SIMD3<Float>, _ vectorB: SIMD3<Float>) -> Float {

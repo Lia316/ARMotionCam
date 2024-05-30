@@ -19,14 +19,18 @@ struct ARPracticeViewContainer: UIViewRepresentable {
         let container = setup(context, sceneView)
         
         loadBiplaneModel(in: sceneView)
-        context.coordinator.startTracking(in: sceneView)
+        context.coordinator.registerModelAnimation(in: sceneView)
                 
         return container
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {
         if let sceneView = uiView.subviews.first(where: { $0 is ARSCNView }) as? ARSCNView {
-            context.coordinator.startTracking(in: sceneView)
+            if practiceInfo.isRecording {
+                context.coordinator.startTracking(in: sceneView)
+            } else {
+                context.coordinator.stopTracking()
+            }
         }
     }
     

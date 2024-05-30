@@ -14,6 +14,7 @@ class ScreenPracticeRecorder: NSObject, RecordARDelegate, RenderARDelegate {
     @ObservedObject private var practiceInfo: PracticeInfo
     private var recorder: RecordAR?
     private var arView: ARSCNView
+    private var isAppInBackground = false
     
     init(practiceInfo: PracticeInfo, arView: ARSCNView) {
         self.practiceInfo = practiceInfo
@@ -21,6 +22,7 @@ class ScreenPracticeRecorder: NSObject, RecordARDelegate, RenderARDelegate {
         super.init()
         
         self.setupRecorder()
+        self.setupNotifications()
     }
     
     private func setupRecorder() {
@@ -33,14 +35,35 @@ class ScreenPracticeRecorder: NSObject, RecordARDelegate, RenderARDelegate {
         recorder?.prepare()
     }
     
+    private func setupNotifications() {
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(appDidBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+    
+    @objc private func appWillResignActive() {
+        isAppInBackground = true
+        if isRecording() {
+            stopAndExport()
+        }
+        arView.session.pause()
+    }
+    
+    @objc private func appDidBecomeActive() {
+        isAppInBackground = false
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.planeDetection = [.horizontal, .vertical]
+        arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+        recorder?.prepare()
+    }
+    
     func isRecording() -> Bool {
         practiceInfo.isRecording = recorder?.status == .recording
         return recorder?.status == .recording
     }
     
     func startScreenRecording() {
-        guard recorder?.status == .readyToRecord else {
-            print("Recording is already in progress or not ready to record.")
+        guard recorder?.status == .readyToRecord && !isAppInBackground else {
+            print("Recording is already in progress, not ready to record, or app is in background.")
             return
         }
         
@@ -96,6 +119,7 @@ class ScreenPracticeRecorder: NSObject, RecordARDelegate, RenderARDelegate {
     func frame(didRender buffer: CVPixelBuffer, with time: CMTime, using rawBuffer: CVPixelBuffer) {}
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
         DispatchQueue.main.async {
             self.practiceInfo.isRecording = false
         }

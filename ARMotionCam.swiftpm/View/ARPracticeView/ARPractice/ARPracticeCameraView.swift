@@ -11,12 +11,12 @@ import AVKit
 
 struct ARPracticeCameraView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @EnvironmentObject var practiceInfo: PracticeInfo
+    @ObservedObject var practiceInfo = PracticeInfo()
     var arVideo: ARVideo
     
     var body: some View {
         ZStack {
-            ARPracticeViewContainer(arVideo: arVideo)
+            ARPracticeViewContainer(practiceInfo: practiceInfo, arVideo: arVideo)
                 .environment(\.managedObjectContext, viewContext)
                 .edgesIgnoringSafeArea(.all)
             VStack {

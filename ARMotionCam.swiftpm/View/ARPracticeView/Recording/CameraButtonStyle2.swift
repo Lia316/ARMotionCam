@@ -9,10 +9,11 @@ import SwiftUI
 
 //TODO: refactor - make screen recorder protocol & remove the file
 struct CameraButtonnStyle2: ButtonStyle {
-    var recorder: ScreenPracticeRecorder
+    @ObservedObject var practiceInfo: PracticeInfo
     var action: (() -> Void)?
+    
     var innerCircleWidth: CGFloat {
-        self.recorder.isRecording() ? 32 : 49
+        self.practiceInfo.isRecording ? 32 : 49
     }
     
     func makeBody(configuration: Configuration) -> some View {
@@ -22,10 +23,9 @@ struct CameraButtonnStyle2: ButtonStyle {
                 .foregroundColor(.red)
                 .frame(width: 65, height: 65)
 
-            RoundedRectangle(cornerRadius: recorder.isRecording() ? 8 : innerCircleWidth / 2)
+            RoundedRectangle(cornerRadius: practiceInfo.isRecording ? 8 : innerCircleWidth / 2)
                 .foregroundColor(.red)
                 .frame(width: innerCircleWidth, height: innerCircleWidth)
-
         }
         .padding(20)
         .onTapGesture {

@@ -37,7 +37,6 @@ struct VideoDetailView: View {
             }
             .ignoresSafeArea()
             ARPracticeCameraView(arVideo: video)
-                .environmentObject(PracticeInfo())
         }
     }
     

@@ -11,7 +11,7 @@ import SwiftUI
 
 struct ARPracticeViewContainer: UIViewRepresentable {
     @Environment(\.managedObjectContext) private var viewContext
-    @EnvironmentObject var practiceInfo: PracticeInfo
+    @ObservedObject var practiceInfo: PracticeInfo
     var arVideo: ARVideo
 
     func makeUIView(context: Context) -> UIView {

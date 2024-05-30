@@ -1,6 +1,6 @@
 //
 //  VideoDetailView.swift
-//  
+//  ARMotionCam
 //
 //  Created by 리아 on 5/24/24.
 //

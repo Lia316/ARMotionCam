@@ -23,6 +23,9 @@ struct PracticeRecorderView: View {
             Button(action: {}, label: {})
                 .buttonStyle(CameraButtonnStyle2(action: { playOrPause() }))
         }
+        .onAppear {
+            recorder.rest()
+        }
     }
     
     private func playOrPause() {

@@ -25,5 +25,11 @@ struct ARPracticeCameraView: View {
                 Text("Difference Avg: \(practiceInfo.avgDifference, specifier: "%.4f")")
             }
         }
+        .onAppear {
+            UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
+        }
+        .onDisappear {
+            UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+        }
     }
 }

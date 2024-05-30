@@ -44,10 +44,12 @@ struct ARPracticeViewContainer: UIViewRepresentable {
         sceneView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
         let configuration = ARWorldTrackingConfiguration()
-        configuration.planeDetection = [.horizontal, .vertical]
+        configuration.planeDetection = [.horizontal]
         sceneView.session.run(configuration)
         
-        let recorderView = UIHostingController(rootView: PracticeRecorderView(practiceInfo: practiceInfo, arView: sceneView).environmentObject(practiceInfo)).view
+        let recorderView = UIHostingController(rootView:
+                                                PracticeRecorderView(practiceInfo: practiceInfo, arView: sceneView)
+                                                    .environmentObject(practiceInfo)).view
         recorderView?.frame = container.bounds
         recorderView?.backgroundColor = .clear
         recorderView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]

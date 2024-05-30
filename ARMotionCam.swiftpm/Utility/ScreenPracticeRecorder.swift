@@ -32,7 +32,8 @@ class ScreenPracticeRecorder: NSObject, RecordARDelegate, RenderARDelegate {
         recorder?.onlyRenderWhileRecording = false
         recorder?.enableAdjustEnvironmentLighting = true
         recorder?.inputViewOrientations = [.landscapeLeft, .landscapeRight]
-        recorder?.prepare()
+        recorder?.videoOrientation = .alwaysLandscape
+        recorder?.rest()
     }
     
     private func setupNotifications() {
@@ -53,7 +54,7 @@ class ScreenPracticeRecorder: NSObject, RecordARDelegate, RenderARDelegate {
         let configuration = ARWorldTrackingConfiguration()
         configuration.planeDetection = [.horizontal, .vertical]
         arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
-        recorder?.prepare()
+        recorder?.rest()
     }
     
     func isRecording() -> Bool {
@@ -115,14 +116,20 @@ class ScreenPracticeRecorder: NSObject, RecordARDelegate, RenderARDelegate {
         }
     }
     
+    func prepare() {
+        recorder?.prepare()
+    }
+    
+    func rest() {
+        recorder?.rest()
+    }
+    
     // RenderARDelegate method
     func frame(didRender buffer: CVPixelBuffer, with time: CMTime, using rawBuffer: CVPixelBuffer) {}
     
     deinit {
         NotificationCenter.default.removeObserver(self)
-        DispatchQueue.main.async {
-            self.practiceInfo.isRecording = false
-        }
+        self.practiceInfo.isRecording = false
         recorder?.stop()
         print("Recorder deinit")
     }

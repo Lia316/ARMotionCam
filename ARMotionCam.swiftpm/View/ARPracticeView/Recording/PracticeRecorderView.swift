@@ -10,11 +10,10 @@ import SwiftUI
 import ARVideoKit
 
 struct PracticeRecorderView: View {
-    @ObservedObject var practiceInfo: PracticeInfo
+    @EnvironmentObject var practiceInfo: PracticeInfo
     private var recorder: ScreenPracticeRecorder
 
     init(practiceInfo: PracticeInfo, arView: ARSCNView) {
-        self.practiceInfo = practiceInfo
         self.recorder = ScreenPracticeRecorder(practiceInfo: practiceInfo, arView: arView)
     }
     
@@ -22,7 +21,7 @@ struct PracticeRecorderView: View {
         VStack {
             Spacer()
             Button(action: {}, label: {})
-                .buttonStyle(CameraButtonnStyle2(practiceInfo: practiceInfo, action: { playOrPause() }))
+                .buttonStyle(CameraButtonnStyle2(action: { playOrPause() }))
         }
     }
     

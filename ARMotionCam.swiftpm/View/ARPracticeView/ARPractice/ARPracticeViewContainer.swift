@@ -11,7 +11,7 @@ import SwiftUI
 
 struct ARPracticeViewContainer: UIViewRepresentable {
     @Environment(\.managedObjectContext) private var viewContext
-    @ObservedObject var practiceInfo: PracticeInfo
+    @EnvironmentObject var practiceInfo: PracticeInfo
     var arVideo: ARVideo
 
     func makeUIView(context: Context) -> UIView {
@@ -47,7 +47,7 @@ struct ARPracticeViewContainer: UIViewRepresentable {
         configuration.planeDetection = [.horizontal, .vertical]
         sceneView.session.run(configuration)
         
-        let recorderView = UIHostingController(rootView: PracticeRecorderView(practiceInfo: practiceInfo, arView: sceneView)).view
+        let recorderView = UIHostingController(rootView: PracticeRecorderView(practiceInfo: practiceInfo, arView: sceneView).environmentObject(practiceInfo)).view
         recorderView?.frame = container.bounds
         recorderView?.backgroundColor = .clear
         recorderView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]

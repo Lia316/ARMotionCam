@@ -9,6 +9,6 @@ import Foundation
 
 class PracticeInfo: ObservableObject {
     @Published var isRecording = false
-    @Published var currentDifference = 0.0
-    @Published var diffSum = 0.0
+    @Published var currentDifference: Double = 0.0
+    @Published var diffSum: Double = 0.0
 }

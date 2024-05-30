@@ -9,6 +9,7 @@ import ARKit
 import CoreData
 import RealityKit
 import SceneKit
+import SwiftUI
 
 class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDelegate {
     
@@ -18,7 +19,7 @@ class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDeleg
     }
     
     private var viewContext: NSManagedObjectContext
-    private var practiceInfo: PracticeInfo
+    @ObservedObject var practiceInfo: PracticeInfo
     private var cameraSpaceTime: [SpaceTime]
     private var modelSpaceTime: [SpaceTime]
     
@@ -32,7 +33,7 @@ class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDeleg
     
     init(_ viewContext: NSManagedObjectContext, practiceInfo: PracticeInfo, guideData: ARVideo) {
         self.viewContext = viewContext
-        self.practiceInfo = practiceInfo
+        self._practiceInfo = ObservedObject(wrappedValue: practiceInfo)
         self.cameraSpaceTime = SpaceTimeDataManager.fetchCameraData(for: guideData, in: viewContext)
         self.modelSpaceTime = SpaceTimeDataManager.fetchModelData(for: guideData, in: viewContext)
     }
@@ -70,48 +71,36 @@ class ARPracticeTrackingCoordinator: NSObject, ARSessionDelegate, ARSCNViewDeleg
     
     // Update current difference & difference sum in PracticeInfo
     private func updateTrackingData(arView: ARSCNView) {
-        if let cameraTransform = arView.session.currentFrame?.camera.transform {
-            let cameraPosition = SIMD3<Float>(cameraTransform.columns.3.x, cameraTransform.columns.3.y, cameraTransform.columns.3.z)
-            let cameraOrientation = simd_quatf(cameraTransform)
-
-            if shouldSaveData(currentPosition: cameraPosition, lastPosition: lastCameraPosition, currentOrientation: cameraOrientation, lastOrientation: lastCameraOrientation) {
-                lastCameraPosition = cameraPosition
-                lastCameraOrientation = cameraOrientation
-
-                if currentCameraIndex < cameraSpaceTime.count {
-                    let guideData = cameraSpaceTime[currentCameraIndex]
-                    let guidePosition = SIMD3<Float>(guideData.positionX, guideData.positionY, guideData.positionZ)
-                    let guideOrientation = simd_quatf(vector: SIMD4<Float>(guideData.orientationX, guideData.orientationY, guideData.orientationZ, guideData.orientationW))
-                    
-                    // Calculate differences
-                    let positionDifference = distance(cameraPosition, guidePosition)
-                    let orientationDifference = distance(cameraOrientation.vector, guideOrientation.vector)
-                    
-                    // Update practiceInfo
-                    DispatchQueue.main.async {
-                        self.practiceInfo.currentDifference = Double(positionDifference + orientationDifference)
-                        self.practiceInfo.diffSum += Double(positionDifference + orientationDifference)
-                    }
-                    currentCameraIndex += 1
-                } else {
-                    // Reset tracking
-                    currentCameraIndex = 0
-                }
+        guard let currentFrame = arView.session.currentFrame else { return }
+        
+        let cameraTransform = currentFrame.camera.transform
+        let cameraPosition = SIMD3<Float>(cameraTransform.columns.3.x, cameraTransform.columns.3.y, cameraTransform.columns.3.z)
+        let cameraOrientation = simd_quatf(cameraTransform)
+        
+        if currentCameraIndex < cameraSpaceTime.count {
+            let guideData = cameraSpaceTime[currentCameraIndex]
+            let guidePosition = SIMD3<Float>(guideData.positionX, guideData.positionY, guideData.positionZ)
+            let guideOrientation = simd_quatf(vector: SIMD4<Float>(guideData.orientationX, guideData.orientationY, guideData.orientationZ, guideData.orientationW))
+            
+            // Calculate differences
+            let positionDifference = distance(cameraPosition, guidePosition)
+            let orientationDifference = distance(cameraOrientation.vector, guideOrientation.vector)
+            
+            // Update practiceInfo
+            let totalDifference = Double(positionDifference + orientationDifference)
+            DispatchQueue.main.async {
+                self.practiceInfo.currentDifference = totalDifference
+                self.practiceInfo.diffSum += totalDifference
             }
+            
+            currentCameraIndex += 1
+        } else {
+            // Reset tracking
+            currentCameraIndex = 0
         }
-    }
-
-    private func shouldSaveData(currentPosition: SIMD3<Float>, lastPosition: SIMD3<Float>?,
-                                currentOrientation: simd_quatf, lastOrientation: simd_quatf?) -> Bool {
-        let positionThreshold: Float = 0.01
-        let orientationThreshold: Float = 0.01
-
-        if let lastPosition = lastPosition, let lastOrientation = lastOrientation {
-            let positionDifference = distance(currentPosition, lastPosition)
-            let orientationDifference = distance(currentOrientation.vector, lastOrientation.vector)
-            return positionDifference > positionThreshold || orientationDifference > orientationThreshold
-        }
-        return true
+        
+        lastCameraPosition = cameraPosition
+        lastCameraOrientation = cameraOrientation
     }
 
     private func distance(_ vectorA: SIMD3<Float>, _ vectorB: SIMD3<Float>) -> Float {

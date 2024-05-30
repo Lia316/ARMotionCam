@@ -9,7 +9,7 @@ import SwiftUI
 
 //TODO: refactor - make screen recorder protocol & remove the file
 struct CameraButtonnStyle2: ButtonStyle {
-    @ObservedObject var practiceInfo: PracticeInfo
+    @EnvironmentObject var practiceInfo: PracticeInfo
     var action: (() -> Void)?
     
     var innerCircleWidth: CGFloat {

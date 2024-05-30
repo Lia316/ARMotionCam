@@ -26,9 +26,7 @@ class SpaceTimeDataManager {
     
     static func fetchCameraData(for video: ARVideo, in context: NSManagedObjectContext) -> [SpaceTime] {
         let fetchRequest: NSFetchRequest<SpaceTime> = SpaceTime.fetchRequest()
-        fetchRequest.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [
-            NSPredicate(format: "cameraInfoOrigin == %@", video)
-        ])
+        fetchRequest.predicate = NSPredicate(format: "cameraInfoOrigin == %@", video)
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
 
         do {
@@ -41,9 +39,7 @@ class SpaceTimeDataManager {
     
     static func fetchModelData(for video: ARVideo, in context: NSManagedObjectContext) -> [SpaceTime] {
         let fetchRequest: NSFetchRequest<SpaceTime> = SpaceTime.fetchRequest()
-        fetchRequest.predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [
-            NSPredicate(format: "modelInfoOrigin == %@", video)
-        ])
+        fetchRequest.predicate = NSPredicate(format: "modelInfoOrigin == %@", video)
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
 
         do {
@@ -54,4 +50,3 @@ class SpaceTimeDataManager {
         }
     }
 }
-

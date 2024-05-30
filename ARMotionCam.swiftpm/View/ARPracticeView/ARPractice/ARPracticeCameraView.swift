@@ -11,17 +11,18 @@ import AVKit
 
 struct ARPracticeCameraView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @ObservedObject var practiceInfo = PracticeInfo()
+    @StateObject var practiceInfo = PracticeInfo()
     var arVideo: ARVideo
     
     var body: some View {
         ZStack {
-            ARPracticeViewContainer(practiceInfo: practiceInfo, arVideo: arVideo)
+            ARPracticeViewContainer(arVideo: arVideo)
                 .environment(\.managedObjectContext, viewContext)
+                .environmentObject(practiceInfo)
                 .edgesIgnoringSafeArea(.all)
             VStack {
-                Text("\(practiceInfo.currentDifference)")
-                Text("\(practiceInfo.diffSum)")
+                Text("Current Difference: \(practiceInfo.currentDifference, specifier: "%.4f")")
+                Text("Difference Sum: \(practiceInfo.diffSum, specifier: "%.4f")")
             }
         }
     }

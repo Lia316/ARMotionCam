@@ -23,5 +23,30 @@ class SpaceTimeDataManager {
             return []
         }
     }
-}
+    
+    static func fetchCameraData(for video: ARVideo, in context: NSManagedObjectContext) -> [SpaceTime] {
+        let fetchRequest: NSFetchRequest<SpaceTime> = SpaceTime.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "cameraInfoOrigin == %@", video)
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
 
+        do {
+            return try context.fetch(fetchRequest)
+        } catch {
+            print("Failed to fetch camera SpaceTime data: \(error.localizedDescription)")
+            return []
+        }
+    }
+    
+    static func fetchModelData(for video: ARVideo, in context: NSManagedObjectContext) -> [SpaceTime] {
+        let fetchRequest: NSFetchRequest<SpaceTime> = SpaceTime.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "modelInfoOrigin == %@", video)
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
+
+        do {
+            return try context.fetch(fetchRequest)
+        } catch {
+            print("Failed to fetch model SpaceTime data: \(error.localizedDescription)")
+            return []
+        }
+    }
+}

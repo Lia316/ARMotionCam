@@ -33,14 +33,21 @@ let package = Package(
                 .fileAccess(.userSelectedFiles, mode: .readOnly),
                 .camera(purposeString: "This app uses the camera to overlay virtual objects in the real world."),
                 .photoLibrary(purposeString: "This app uses the photo library to access ARvideo."),
-                .photoLibraryAdd(purposeString: "This app uses the photo library to add ARvideo.")
+                .photoLibraryAdd(purposeString: "This app uses the photo library to add ARvideo."),
+                .microphone(purposeString: "This app uses the microphone during ARvideo recording.")
             ],
             appCategory: .photography
         )
     ],
+    dependencies: [
+        .package(url: "https://github.com/AFathi/ARVideoKit.git", .exact("1.6.0"))
+    ],
     targets: [
         .executableTarget(
             name: "AppModule",
+            dependencies: [
+                .product(name: "ARVideoKit", package: "ARVideoKit")
+            ],
             path: ".",
             resources: [
                 .process("Resources")

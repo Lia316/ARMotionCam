@@ -1,18 +1,19 @@
 //
-//  CameraButtonStyle.swift
+//  CameraButtonStyle2.swift
 //  ARMotionCam
 //
-//  Created by 리아 on 5/6/24.
+//  Created by 리아 on 5/27/24.
 //
 
 import SwiftUI
 
-struct CameraButtonnStyle: ButtonStyle {
-    @EnvironmentObject var recordInfo: RecordingInfo
-    var recorder: ScreenRecorder
+//TODO: refactor - make screen recorder protocol & remove the file
+struct CameraButtonnStyle2: ButtonStyle {
+    @EnvironmentObject var practiceInfo: PracticeInfo
     var action: (() -> Void)?
+    
     var innerCircleWidth: CGFloat {
-        self.recorder.isRecording() ? 32 : 49
+        self.practiceInfo.isRecording ? 32 : 49
     }
     
     func makeBody(configuration: Configuration) -> some View {
@@ -22,10 +23,9 @@ struct CameraButtonnStyle: ButtonStyle {
                 .foregroundColor(.red)
                 .frame(width: 65, height: 65)
 
-            RoundedRectangle(cornerRadius: recorder.isRecording() ? 8 : innerCircleWidth / 2)
+            RoundedRectangle(cornerRadius: practiceInfo.isRecording ? 8 : innerCircleWidth / 2)
                 .foregroundColor(.red)
                 .frame(width: innerCircleWidth, height: innerCircleWidth)
-
         }
         .padding(20)
         .onTapGesture {
